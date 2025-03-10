@@ -1,0 +1,39 @@
+# Ignore build directories
+/build/
+*/build/
+
+# Ignore CMake-related files
+/CMakeFiles/
+CMakeCache.txt
+CMakeLists.txt.user
+CMakeLists.txt.CMake.user
+
+# Ignore compiled object files, executables, and libraries
+*.o
+*.obj
+*.a
+*.so
+*.dll
+*.exe
+*.out
+
+# Ignore temporary files created by IDEs or editors
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Ignore log files
+*.log
+
+# Ignore generated files for clang-tidy, clang-format, and other tools
+*.d
+*.clangd
+
+# Ignore custom directories for different toolchains or environments
+toolchains-v1/*
+*/toolchains-v1/*
+
+# Ignore any other specific files
+*.json
+*.xml
