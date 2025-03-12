@@ -7,6 +7,7 @@
 #include "Window.h"
 #include "CelestialBody.h"
 #include "Camera.h"
+#include "FollowCamera.h" // Добавляем заголовочный файл новой камеры
 #include <iostream>
 
 using namespace DirectX;
@@ -132,16 +133,20 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE, LPSTR, int nCmdShow) {
     bodies[9]->position = XMFLOAT3(2.0f, 0, 0);
     std::cout << "Moon 2 for Planet 4 created with orbit radius 2.0, orbit speed 1.0, rotation speed 0.8, scale 0.4, initial position (2.0, 0, 0), color turquoise." << std::endl;
 
+    // Создание камер
     std::vector<std::unique_ptr<Camera>> cameras;
     cameras.emplace_back(std::make_unique<FPSCamera>());
     cameras.emplace_back(std::make_unique<OrbitalCamera>());
+    cameras.emplace_back(std::make_unique<FollowCamera>(bodies[0].get())); // Новая камера, следящая за звездой
     int currentCamera = 0;
-    std::cout << "Created " << cameras.size() << " cameras (FPS and Orbital)." << std::endl;
+    std::cout << "Created 3 cameras: FPSCamera, OrbitalCamera, and FollowCamera (following star)." << std::endl;
 
+    // Инициализация начальных позиций камер
     cameras[0]->position = XMFLOAT3(0, 0, -30.0f);
     cameras[1]->position = XMFLOAT3(0, 0, -30.0f);
     cameras[1]->target = XMFLOAT3(0, 0, 0);
-    std::cout << "Initialized cameras. FPS at (0, 0, -30), Orbital at (0, 0, -30) targeting (0, 0, 0)." << std::endl;
+    cameras[2]->position = bodies[0]->position; // FollowCamera изначально совпадает с позицией звезды
+    std::cout << "Initialized cameras. FPS at (0, 0, -30), Orbital at (0, 0, -30), FollowCamera at star's position." << std::endl;
 
     LARGE_INTEGER frequency, lastTime;
     QueryPerformanceFrequency(&frequency);
@@ -161,14 +166,14 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE, LPSTR, int nCmdShow) {
             lastTime = currentTime;
             std::cout << "New frame started. DeltaTime: " << deltaTime << " seconds." << std::endl;
 
-            if (GetAsyncKeyState('1') & 0x8000) {
-                currentCamera = 0;
-                std::cout << "Switched to FPS camera. Current camera index: " << currentCamera << std::endl;
+            // Переключение камер по клавише T
+            if (GetAsyncKeyState('T') & 0x8000) {
+                currentCamera = (currentCamera + 1) % cameras.size();
+                std::cout << "Switched to camera " << currentCamera << " (0 = FPS, 1 = Orbital, 2 = Follow)." << std::endl;
+                Sleep(200); // Задержка для предотвращения быстрого переключения
             }
-            if (GetAsyncKeyState('2') & 0x8000) {
-                currentCamera = 1;
-                std::cout << "Switched to Orbital camera. Current camera index: " << currentCamera << std::endl;
-            }
+
+            // Управление FOV (оставляем как есть)
             if (GetAsyncKeyState('3') & 0x8000) {
                 cameras[currentCamera]->fov = XM_PIDIV4;
                 std::cout << "Set FOV to 45 degrees for camera " << currentCamera << std::endl;
@@ -182,16 +187,19 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE, LPSTR, int nCmdShow) {
                 std::cout << "Set FOV to 22.5 degrees for camera " << currentCamera << std::endl;
             }
 
+            // Обновление тел
             for (size_t i = 0; i < bodies.size(); ++i) {
                 std::cout << "Updating body " << i << " with deltaTime: " << deltaTime << std::endl;
                 bodies[i]->Update(deltaTime);
             }
             std::cout << "All bodies updated." << std::endl;
 
+            // Обновление текущей камеры
             std::cout << "Updating camera " << currentCamera << " with deltaTime: " << deltaTime << std::endl;
             cameras[currentCamera]->Update(deltaTime);
             std::cout << "Camera updated." << std::endl;
 
+            // Рендеринг
             render.BeginFrame();
             for (size_t i = 0; i < bodies.size(); ++i) {
                 std::cout << "Attempting to draw body " << i << " with camera " << currentCamera << std::endl;
