@@ -10,6 +10,8 @@
 #include "FollowCamera.h" // Добавляем заголовочный файл новой камеры
 #include <iostream>
 
+#include "Grid.h"
+
 using namespace DirectX;
 
 struct ConstantBuffer {
@@ -133,11 +135,12 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE, LPSTR, int nCmdShow) {
     bodies[9]->position = XMFLOAT3(2.0f, 0, 0);
     std::cout << "Moon 2 for Planet 4 created with orbit radius 2.0, orbit speed 1.0, rotation speed 0.8, scale 0.4, initial position (2.0, 0, 0), color turquoise." << std::endl;
 
+    Grid grid(device, 20.0f, 10); // Сетка 20x20 с 10 делениями
     // Создание камер
     std::vector<std::unique_ptr<Camera>> cameras;
     cameras.emplace_back(std::make_unique<FPSCamera>());
     cameras.emplace_back(std::make_unique<OrbitalCamera>());
-    cameras.emplace_back(std::make_unique<FollowCamera>(bodies[0].get())); // Новая камера, следящая за звездой
+    cameras.emplace_back(std::make_unique<FollowCamera>(bodies[1].get())); // Новая камера, следящая за звездой
     int currentCamera = 0;
     std::cout << "Created 3 cameras: FPSCamera, OrbitalCamera, and FollowCamera (following star)." << std::endl;
 
@@ -201,6 +204,15 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE, LPSTR, int nCmdShow) {
 
             // Рендеринг
             render.BeginFrame();
+
+            XMMATRIX world = XMMatrixIdentity(); // Единичная матрица, сетка на основании
+            XMMATRIX worldViewProj = world * cameras[currentCamera]->GetViewMatrix() * cameras[currentCamera]->GetProjectionMatrix();
+            ConstantBuffer cb;
+            cb.worldViewProj = XMMatrixTranspose(worldViewProj);
+            context->UpdateSubresource(constantBuffer, 0, nullptr, &cb, 0, 0);
+            context->VSSetConstantBuffers(0, 1, &constantBuffer);
+            grid.Draw(context);
+
             for (size_t i = 0; i < bodies.size(); ++i) {
                 std::cout << "Attempting to draw body " << i << " with camera " << currentCamera << std::endl;
                 bodies[i]->Draw(context, render, cameras[currentCamera]->GetViewMatrix(),

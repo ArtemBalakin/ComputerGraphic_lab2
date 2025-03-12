@@ -167,7 +167,7 @@ bool Render::Initialize(HWND hwnd, int width, int height) {
 
 void Render::BeginFrame() {
     std::cout << "=== Beginning frame ===" << std::endl;
-    float clearColor[] = { 0.0f, 0.0f, 0.5f, 1.0f };
+    float clearColor[] = { 0.0f, 0.0f, 0.1f, 1.0f };
     context->ClearRenderTargetView(renderTargetView, clearColor);
     std::cout << "Render target cleared with color (0, 0, 0.5, 1)." << std::endl;
     context->ClearDepthStencilView(depthStencilView, D3D11_CLEAR_DEPTH | D3D11_CLEAR_STENCIL, 1.0f, 0);

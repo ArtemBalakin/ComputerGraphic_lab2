@@ -21,6 +21,10 @@ add_executable(CG_Lab1
         CelestialBody.h
         Camera.cpp
         Camera.h
+        FollowCamera.cpp
+        FollowCamera.h
+        Grid.cpp
+        Grid.h
 )
 
 file(COPY ${CMAKE_CURRENT_SOURCE_DIR}/Shaders DESTINATION ${CMAKE_CURRENT_BINARY_DIR})
