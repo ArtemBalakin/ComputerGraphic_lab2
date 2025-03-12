@@ -7,7 +7,7 @@
 #include "Window.h"
 #include "CelestialBody.h"
 #include "Camera.h"
-#include "FollowCamera.h" // Добавляем заголовочный файл новой камеры
+#include "FollowCamera.h"
 #include <iostream>
 
 #include "Grid.h"
@@ -59,17 +59,17 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE, LPSTR, int nCmdShow) {
     std::cout << "Creating celestial bodies..." << std::endl;
     // Звезда (ярко-жёлтая)
     bodies.push_back(std::make_unique<CelestialBody>(device, true, nullptr, 2.0f, XMFLOAT3(1.0f, 1.0f, 0.2f)));
-    bodies[0]->position = XMFLOAT3(0, 0, 0);
+    bodies[0]->position = XMFLOAT3(0, 2.0f, 0); // Поднимаем звезду над сеткой
     bodies[0]->rotationSpeed = 0.5f;
-    std::cout << "Star created at (0, 0, 0) with scale 2.0 and rotation speed 0.5, color yellow." << std::endl;
+    std::cout << "Star created at (0, 2.0, 0) with scale 2.0 and rotation speed 0.5, color yellow." << std::endl;
 
     // Планета 1 (голубая)
     bodies.push_back(std::make_unique<CelestialBody>(device, true, bodies[0].get(), 1.0f, XMFLOAT3(0.2f, 0.6f, 1.0f)));
-    bodies[1]->orbitRadius = 5.0f;
+    bodies[1]->orbitRadius = 7.0f; // Увеличили с 5.0f
     bodies[1]->orbitSpeed = 1.0f;
     bodies[1]->rotationSpeed = 1.0f;
-    bodies[1]->position = XMFLOAT3(5.0f, 0, 0);
-    std::cout << "Planet 1 created with orbit radius 5.0, orbit speed 1.0, rotation speed 1.0, scale 1.0, initial position (5, 0, 0), color blue." << std::endl;
+    bodies[1]->position = XMFLOAT3(7.0f, 2.0f, 0); // Поднимаем над сеткой
+    std::cout << "Planet 1 created with orbit radius 7.0, orbit speed 1.0, rotation speed 1.0, scale 1.0, initial position (7, 2, 0), color blue." << std::endl;
 
     // Луна 1 для Планеты 1 (серая)
     bodies.push_back(std::make_unique<CelestialBody>(device, false, bodies[1].get(), 0.5f, XMFLOAT3(0.7f, 0.7f, 0.7f)));
@@ -81,11 +81,11 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE, LPSTR, int nCmdShow) {
 
     // Планета 2 (зелёная)
     bodies.push_back(std::make_unique<CelestialBody>(device, true, bodies[0].get(), 1.2f, XMFLOAT3(0.1f, 0.9f, 0.3f)));
-    bodies[3]->orbitRadius = 7.0f;
+    bodies[3]->orbitRadius = 10.0f; // Увеличили с 7.0f
     bodies[3]->orbitSpeed = 0.8f;
     bodies[3]->rotationSpeed = 0.9f;
-    bodies[3]->position = XMFLOAT3(7.0f, 0, 0);
-    std::cout << "Planet 2 created with orbit radius 7.0, orbit speed 0.8, rotation speed 0.9, scale 1.2, initial position (7, 0, 0), color green." << std::endl;
+    bodies[3]->position = XMFLOAT3(10.0f, 2.0f, 0);
+    std::cout << "Planet 2 created with orbit radius 10.0, orbit speed 0.8, rotation speed 0.9, scale 1.2, initial position (10, 2, 0), color green." << std::endl;
 
     // Луна 1 для Планеты 2 (фиолетовая)
     bodies.push_back(std::make_unique<CelestialBody>(device, false, bodies[3].get(), 0.4f, XMFLOAT3(0.6f, 0.2f, 0.8f)));
@@ -97,11 +97,11 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE, LPSTR, int nCmdShow) {
 
     // Планета 3 (красная)
     bodies.push_back(std::make_unique<CelestialBody>(device, true, bodies[0].get(), 1.5f, XMFLOAT3(1.0f, 0.3f, 0.3f)));
-    bodies[5]->orbitRadius = 9.0f;
+    bodies[5]->orbitRadius = 13.0f; // Увеличили с 9.0f
     bodies[5]->orbitSpeed = 0.6f;
     bodies[5]->rotationSpeed = 0.7f;
-    bodies[5]->position = XMFLOAT3(9.0f, 0, 0);
-    std::cout << "Planet 3 created with orbit radius 9.0, orbit speed 0.6, rotation speed 0.7, scale 1.5, initial position (9, 0, 0), color red." << std::endl;
+    bodies[5]->position = XMFLOAT3(13.0f, 2.0f, 0);
+    std::cout << "Planet 3 created with orbit radius 13.0, orbit speed 0.6, rotation speed 0.7, scale 1.5, initial position (13, 2, 0), color red." << std::endl;
 
     // Луна 1 для Планеты 3 (белая)
     bodies.push_back(std::make_unique<CelestialBody>(device, false, bodies[5].get(), 0.6f, XMFLOAT3(1.0f, 1.0f, 1.0f)));
@@ -113,11 +113,11 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE, LPSTR, int nCmdShow) {
 
     // Планета 4 (оранжевая)
     bodies.push_back(std::make_unique<CelestialBody>(device, true, bodies[0].get(), 1.8f, XMFLOAT3(1.0f, 0.6f, 0.0f)));
-    bodies[7]->orbitRadius = 11.0f;
+    bodies[7]->orbitRadius = 16.0f; // Увеличили с 11.0f
     bodies[7]->orbitSpeed = 0.5f;
     bodies[7]->rotationSpeed = 0.6f;
-    bodies[7]->position = XMFLOAT3(11.0f, 0, 0);
-    std::cout << "Planet 4 created with orbit radius 11.0, orbit speed 0.5, rotation speed 0.6, scale 1.8, initial position (11, 0, 0), color orange." << std::endl;
+    bodies[7]->position = XMFLOAT3(16.0f, 2.0f, 0);
+    std::cout << "Planet 4 created with orbit radius 16.0, orbit speed 0.5, rotation speed 0.6, scale 1.8, initial position (16, 2, 0), color orange." << std::endl;
 
     // Луна 1 для Планеты 4 (розовая)
     bodies.push_back(std::make_unique<CelestialBody>(device, false, bodies[7].get(), 0.5f, XMFLOAT3(1.0f, 0.4f, 0.7f)));
@@ -135,21 +135,24 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE, LPSTR, int nCmdShow) {
     bodies[9]->position = XMFLOAT3(2.0f, 0, 0);
     std::cout << "Moon 2 for Planet 4 created with orbit radius 2.0, orbit speed 1.0, rotation speed 0.8, scale 0.4, initial position (2.0, 0, 0), color turquoise." << std::endl;
 
-    Grid grid(device, 20.0f, 10); // Сетка 20x20 с 10 делениями
+    Grid grid(device, 200.0f, 100); // Сетка 200x200 с 100 делениями
+
     // Создание камер
     std::vector<std::unique_ptr<Camera>> cameras;
     cameras.emplace_back(std::make_unique<FPSCamera>());
     cameras.emplace_back(std::make_unique<OrbitalCamera>());
-    cameras.emplace_back(std::make_unique<FollowCamera>(bodies[1].get())); // Новая камера, следящая за звездой
+    cameras.emplace_back(std::make_unique<FollowCamera>(bodies[1].get())); // Камера следует за первой планетой
     int currentCamera = 0;
-    std::cout << "Created 3 cameras: FPSCamera, OrbitalCamera, and FollowCamera (following star)." << std::endl;
+    std::cout << "Created 3 cameras: FPSCamera, OrbitalCamera, and FollowCamera (following Planet 1)." << std::endl;
 
     // Инициализация начальных позиций камер
-    cameras[0]->position = XMFLOAT3(0, 0, -30.0f);
-    cameras[1]->position = XMFLOAT3(0, 0, -30.0f);
-    cameras[1]->target = XMFLOAT3(0, 0, 0);
-    cameras[2]->position = bodies[0]->position; // FollowCamera изначально совпадает с позицией звезды
-    std::cout << "Initialized cameras. FPS at (0, 0, -30), Orbital at (0, 0, -30), FollowCamera at star's position." << std::endl;
+    cameras[0]->position = XMFLOAT3(0, 2.0f, -30.0f); // Поднимаем камеру над сеткой
+    cameras[1]->position = XMFLOAT3(0, 2.0f, -30.0f);
+    cameras[1]->target = XMFLOAT3(0, 2.0f, 0);
+    cameras[2]->position = bodies[1]->position; // FollowCamera изначально совпадает с позицией планеты
+    std::cout << "Initialized cameras. FPS at (0, 2, -30), Orbital at (0, 2, -30), FollowCamera at Planet 1's position." << std::endl;
+
+    bool drawGrid = true; // Булевая переменная для управления отрисовкой сетки
 
     LARGE_INTEGER frequency, lastTime;
     QueryPerformanceFrequency(&frequency);
@@ -176,7 +179,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE, LPSTR, int nCmdShow) {
                 Sleep(200); // Задержка для предотвращения быстрого переключения
             }
 
-            // Управление FOV (оставляем как есть)
+            // Управление FOV
             if (GetAsyncKeyState('3') & 0x8000) {
                 cameras[currentCamera]->fov = XM_PIDIV4;
                 std::cout << "Set FOV to 45 degrees for camera " << currentCamera << std::endl;
@@ -205,13 +208,15 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE, LPSTR, int nCmdShow) {
             // Рендеринг
             render.BeginFrame();
 
-            XMMATRIX world = XMMatrixIdentity(); // Единичная матрица, сетка на основании
-            XMMATRIX worldViewProj = world * cameras[currentCamera]->GetViewMatrix() * cameras[currentCamera]->GetProjectionMatrix();
-            ConstantBuffer cb;
-            cb.worldViewProj = XMMatrixTranspose(worldViewProj);
-            context->UpdateSubresource(constantBuffer, 0, nullptr, &cb, 0, 0);
-            context->VSSetConstantBuffers(0, 1, &constantBuffer);
-            grid.Draw(context);
+            if (drawGrid) { // Отрисовка сетки только если drawGrid == true
+                XMMATRIX world = XMMatrixIdentity();
+                XMMATRIX worldViewProj = world * cameras[currentCamera]->GetViewMatrix() * cameras[currentCamera]->GetProjectionMatrix();
+                ConstantBuffer cb;
+                cb.worldViewProj = XMMatrixTranspose(worldViewProj);
+                context->UpdateSubresource(constantBuffer, 0, nullptr, &cb, 0, 0);
+                context->VSSetConstantBuffers(0, 1, &constantBuffer);
+                grid.Draw(context);
+            }
 
             for (size_t i = 0; i < bodies.size(); ++i) {
                 std::cout << "Attempting to draw body " << i << " with camera " << currentCamera << std::endl;

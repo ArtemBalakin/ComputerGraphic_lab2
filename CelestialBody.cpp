@@ -73,10 +73,14 @@ void CelestialBody::Update(float deltaTime) {
         XMVECTOR parentPos = XMLoadFloat3(&parent->position);
         XMVECTOR orbitPos = XMVectorSet(orbitRadius * cos(totalOrbitAngle), 0, orbitRadius * sin(totalOrbitAngle), 0);
         XMVECTOR newPos = XMVectorAdd(parentPos, orbitPos);
+        // Добавляем смещение по Y на 2.0f, чтобы поднять над сеткой
+        newPos = XMVectorSetY(newPos, XMVectorGetY(newPos) + 2.0f);
         XMStoreFloat3(&position, newPos);
         std::cout << "Orbit updated. New position: (" << position.x << ", " << position.y << ", " << position.z << ")" << std::endl;
     } else {
         std::cout << "Body has no parent. Skipping orbit calculation." << std::endl;
+        // Для звезды тоже поднимаем на 2.0f
+        position.y = 2.0f;
     }
 
     std::cout << "Updating rotation with angle: " << rotationSpeed * deltaTime << std::endl;
