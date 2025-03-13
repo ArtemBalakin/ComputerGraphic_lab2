@@ -15,34 +15,27 @@ struct Vertex {
 class CelestialBody {
 public:
     CelestialBody(ID3D11Device *device, bool isSphere, CelestialBody *parent, float scale, XMFLOAT3 color,
-                  float orbitInclination = 0.0f);
-
+                  float orbitInclination, float mass = 1.0f);
     ~CelestialBody();
 
-    void Update(float deltaTime);
-
+    void Update(float deltaTime, const std::vector<CelestialBody*>& allBodies);
     void Draw(ID3D11DeviceContext *context, Render &render, const XMMATRIX &view, const XMMATRIX &projection,
               ID3D11Buffer *constantBuffer);
 
-    XMFLOAT3 position;
+    XMFLOAT3 position;  // Позиция тела
+    XMFLOAT3 velocity;  // Вектор скорости
+    float mass;         // Масса тела
 
 public:
-    float orbitSpeed;
-    float rotationSpeed;
-    float orbitRadius;
-
-private:
     CelestialBody *parent;
-    float scale;
+    float orbitSpeed, rotationSpeed, orbitRadius, scale;
     XMFLOAT3 color;
-    ID3D11Buffer *vertexBuffer;
-    ID3D11Buffer *indexBuffer;
+    ID3D11Buffer *vertexBuffer, *indexBuffer;
     UINT indexCount;
-    XMFLOAT4 rotationQuaternion;
     float totalOrbitAngle;
     float orbitInclination;
+    XMFLOAT4 rotationQuaternion;
 
     void CreateSphere(float radius, int slices, int stacks, std::vector<Vertex> &vertices, std::vector<UINT> &indices);
-
     void CreateCube(float size, std::vector<Vertex> &vertices, std::vector<UINT> &indices);
 };

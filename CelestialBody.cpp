@@ -3,23 +3,19 @@
 #include <iostream>
 
 CelestialBody::CelestialBody(ID3D11Device *device, bool isSphere, CelestialBody *parent, float scale, XMFLOAT3 color,
-                             float orbitInclination)
+                             float orbitInclination, float mass)
     : parent(parent), orbitSpeed(0), rotationSpeed(0), orbitRadius(0), scale(scale), color(color),
       vertexBuffer(nullptr), indexBuffer(nullptr), indexCount(0), totalOrbitAngle(0.0f),
-      orbitInclination(orbitInclination) {
-    std::cout << "Creating CelestialBody with parent: " << parent << ", isSphere: " << isSphere << ", scale: " << scale
-            << ", color: (" << color.x << ", " << color.y << ", " << color.z << "), orbitInclination: " <<
-            orbitInclination << std::endl;
+      orbitInclination(orbitInclination), mass(mass) {
+    std::cout << "Creating CelestialBody with mass: " << mass << std::endl;
     position = XMFLOAT3(0, 0, 0);
+    velocity = XMFLOAT3(0, 0, 0);
     rotationQuaternion = XMFLOAT4(0, 0, 0, 1);
 
     std::vector<Vertex> vertices;
     std::vector<UINT> indices;
-    if (isSphere) {
-        CreateSphere(1.0f, 20, 20, vertices, indices);
-    } else {
-        CreateCube(1.0f, vertices, indices);
-    }
+    if (isSphere) CreateSphere(1.0f, 20, 20, vertices, indices);
+    else CreateCube(1.0f, vertices, indices);
 
     D3D11_BUFFER_DESC bd = {};
     bd.Usage = D3D11_USAGE_DEFAULT;
@@ -42,39 +38,36 @@ CelestialBody::~CelestialBody() {
     if (indexBuffer) indexBuffer->Release();
 }
 
-void CelestialBody::Update(float deltaTime) {
-    if (parent) {
-        // Обновляем угол орбиты
-        totalOrbitAngle += orbitSpeed * deltaTime;
+void CelestialBody::Update(float deltaTime, const std::vector<CelestialBody*>& allBodies) {
+    const float G = 5.0f;
 
-        // Вычисляем базовую позицию в плоскости XZ
-        XMVECTOR orbitPos = XMVectorSet(
-            orbitRadius * cos(totalOrbitAngle),
-            0,
-            orbitRadius * sin(totalOrbitAngle),
-            0
-        );
+    XMVECTOR accel = XMVectorZero(); // Ускорение
 
-        // Применяем наклон орбиты (вращение вокруг оси X)
-        XMMATRIX inclinationMatrix = XMMatrixRotationX(orbitInclination);
-        orbitPos = XMVector3Transform(orbitPos, inclinationMatrix);
+    for (const auto* other : allBodies) {
+        if (other == this) continue; // Пропускаем само тело
 
-        // Позиция родителя
-        XMVECTOR parentPos = XMLoadFloat3(&parent->position);
+        XMVECTOR r = XMVectorSubtract(XMLoadFloat3(&other->position), XMLoadFloat3(&position));
+        float distance = XMVectorGetX(XMVector3Length(r));
+        if (distance < 0.1f) distance = 0.1f; // Избегаем деления на ноль
 
-        // Итоговая позиция = позиция родителя + смещение по орбите
-        XMVECTOR newPos = XMVectorAdd(parentPos, orbitPos);
+        // F = G * m1 * m2 / r^2
+        float forceMagnitude = G * mass * other->mass / (distance * distance);
+        XMVECTOR forceDir = XMVector3Normalize(r);
+        XMVECTOR force = XMVectorScale(forceDir, forceMagnitude);
 
-        // Сохраняем новую позицию
-        XMStoreFloat3(&position, newPos);
-
-        std::cout << "Orbit updated for body with parent at (" << parent->position.x << ", " << parent->position.y <<
-                ", " << parent->position.z
-                << "). New position: (" << position.x << ", " << position.y << ", " << position.z << ")" << std::endl;
-    } else {
-        // Для звезды фиксируем позицию
-        position = XMFLOAT3(0, 2.0f, 0);
+        // a = F / m
+        accel = XMVectorAdd(accel, XMVectorScale(force, 1.0f / mass));
     }
+
+    // Обновляем скорость: v = v0 + a * dt
+    XMVECTOR vel = XMLoadFloat3(&velocity);
+    vel = XMVectorAdd(vel, XMVectorScale(accel, deltaTime));
+    XMStoreFloat3(&velocity, vel);
+
+    // Обновляем позицию: p = p0 + v * dt
+    XMVECTOR pos = XMLoadFloat3(&position);
+    pos = XMVectorAdd(pos, XMVectorScale(vel, deltaTime));
+    XMStoreFloat3(&position, pos);
 
     // Вращение вокруг своей оси
     float rotationAngle = rotationSpeed * deltaTime;
@@ -84,38 +77,8 @@ void CelestialBody::Update(float deltaTime) {
     newQuat = XMQuaternionNormalize(newQuat);
     XMStoreFloat4(&rotationQuaternion, newQuat);
 
-    // Ограничение пространства
-    XMFLOAT3 pos = position;
-    const float maxDistance = 15.0f;
-    bool clamped = false;
-    if (pos.x > maxDistance) {
-        pos.x = maxDistance;
-        clamped = true;
-    }
-    if (pos.x < -maxDistance) {
-        pos.x = -maxDistance;
-        clamped = true;
-    }
-    if (pos.y > maxDistance) {
-        pos.y = maxDistance;
-        clamped = true;
-    }
-    if (pos.y < -maxDistance) {
-        pos.y = -maxDistance;
-        clamped = true;
-    }
-    if (pos.z > maxDistance) {
-        pos.z = maxDistance;
-        clamped = true;
-    }
-    if (pos.z < -maxDistance) {
-        pos.z = -maxDistance;
-        clamped = true;
-    }
-    if (clamped) {
-        std::cout << "Position clamped to: (" << pos.x << ", " << pos.y << ", " << pos.z << ")" << std::endl;
-        position = pos;
-    }
+    std::cout << "Body at (" << position.x << ", " << position.y << ", " << position.z
+              << "), velocity (" << velocity.x << ", " << velocity.y << ", " << velocity.z << ")" << std::endl;
 }
 
 void CelestialBody::Draw(ID3D11DeviceContext *context, Render &render, const XMMATRIX &view, const XMMATRIX &projection,
@@ -153,7 +116,7 @@ void CelestialBody::CreateSphere(float radius, int slices, int stacks, std::vect
             v.pos.x = radius * sin(phi) * cos(theta);
             v.pos.y = radius * cos(phi);
             v.pos.z = radius * sin(phi) * sin(theta);
-            v.color = color;
+            v.color =XMFLOAT3(sin(phi), cos(theta), sin(phi));
             vertices.push_back(v);
         }
     }
