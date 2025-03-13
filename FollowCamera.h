@@ -9,13 +9,15 @@ using namespace DirectX;
 
 class FollowCamera : public Camera {
 public:
-    FollowCamera(CelestialBody* followedObject);
+    FollowCamera(CelestialBody *followedObject);
+
     void Update(float deltaTime) override;
+
     XMMATRIX GetViewMatrix() const override;
 
 private:
-    CelestialBody* followedObject; // Указатель на объект, за которым следим
-    XMFLOAT3 offset;              // Смещение камеры относительно объекта
+    CelestialBody *followedObject; // Указатель на объект, за которым следим
+    XMFLOAT3 offset; // Смещение камеры относительно объекта
 };
 
-#endif // FOLLOW_CAMERA_H
+#endif

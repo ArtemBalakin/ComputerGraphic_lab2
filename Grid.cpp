@@ -6,7 +6,7 @@ struct Vertex {
     XMFLOAT3 color;
 };
 
-Grid::Grid(ID3D11Device* device, float size, int divisions) {
+Grid::Grid(ID3D11Device *device, float size, int divisions) {
     std::vector<Vertex> vertices;
     std::vector<UINT> indices;
 
@@ -16,12 +16,12 @@ Grid::Grid(ID3D11Device* device, float size, int divisions) {
     // Создаём линии сетки
     for (int i = 0; i <= divisions; ++i) {
         float x = -halfSize + i * step;
-        vertices.push_back({ XMFLOAT3(x, 0, -halfSize), XMFLOAT3(0.5f, 0.5f, 0.5f) }); // Серый цвет
-        vertices.push_back({ XMFLOAT3(x, 0, halfSize), XMFLOAT3(0.5f, 0.5f, 0.5f) });
+        vertices.push_back({XMFLOAT3(x, 0, -halfSize), XMFLOAT3(0.5f, 0.5f, 0.5f)}); // Серый цвет
+        vertices.push_back({XMFLOAT3(x, 0, halfSize), XMFLOAT3(0.5f, 0.5f, 0.5f)});
 
         float z = -halfSize + i * step;
-        vertices.push_back({ XMFLOAT3(-halfSize, 0, z), XMFLOAT3(0.5f, 0.5f, 0.5f) });
-        vertices.push_back({ XMFLOAT3(halfSize, 0, z), XMFLOAT3(0.5f, 0.5f, 0.5f) });
+        vertices.push_back({XMFLOAT3(-halfSize, 0, z), XMFLOAT3(0.5f, 0.5f, 0.5f)});
+        vertices.push_back({XMFLOAT3(halfSize, 0, z), XMFLOAT3(0.5f, 0.5f, 0.5f)});
     }
 
     for (UINT i = 0; i < vertices.size(); i += 2) {
@@ -50,7 +50,7 @@ Grid::~Grid() {
     if (indexBuffer) indexBuffer->Release();
 }
 
-void Grid::Draw(ID3D11DeviceContext* context) {
+void Grid::Draw(ID3D11DeviceContext *context) {
     UINT stride = sizeof(Vertex);
     UINT offset = 0;
     context->IASetVertexBuffers(0, 1, &vertexBuffer, &stride, &offset);

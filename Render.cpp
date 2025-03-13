@@ -29,7 +29,8 @@ bool Render::Initialize(HWND hwnd, int width, int height) {
     scd.OutputWindow = hwnd;
     scd.SampleDesc.Count = 1;
     scd.Windowed = TRUE;
-    std::cout << "Configured swap chain description: BufferCount=" << scd.BufferCount << ", Format=R8G8B8A8_UNORM, Windowed=" << scd.Windowed << std::endl;
+    std::cout << "Configured swap chain description: BufferCount=" << scd.BufferCount <<
+            ", Format=R8G8B8A8_UNORM, Windowed=" << scd.Windowed << std::endl;
 
     // Создание устройства DirectX и цепочки обмена
     HRESULT hr = D3D11CreateDeviceAndSwapChain(nullptr, D3D_DRIVER_TYPE_HARDWARE, nullptr, 0, nullptr, 0,
@@ -38,11 +39,12 @@ bool Render::Initialize(HWND hwnd, int width, int height) {
         std::cout << "ERROR: Failed to create device and swap chain. Error code: " << hr << std::endl;
         return false;
     }
-    std::cout << "Device created: " << device << ", SwapChain created: " << swapChain << ", Context created: " << context << std::endl;
+    std::cout << "Device created: " << device << ", SwapChain created: " << swapChain << ", Context created: " <<
+            context << std::endl;
 
     // Получение заднего буфера и создание Render Target View
-    ID3D11Texture2D* backBuffer;
-    hr = swapChain->GetBuffer(0, __uuidof(ID3D11Texture2D), (void**)&backBuffer);
+    ID3D11Texture2D *backBuffer;
+    hr = swapChain->GetBuffer(0, __uuidof(ID3D11Texture2D), (void **) &backBuffer);
     if (FAILED(hr)) {
         std::cout << "ERROR: Failed to get back buffer. Error code: " << hr << std::endl;
         return false;
@@ -67,9 +69,10 @@ bool Render::Initialize(HWND hwnd, int width, int height) {
     depthDesc.SampleDesc.Count = 1;
     depthDesc.Usage = D3D11_USAGE_DEFAULT;
     depthDesc.BindFlags = D3D11_BIND_DEPTH_STENCIL;
-    std::cout << "Configured depth stencil description: Width=" << depthDesc.Width << ", Height=" << depthDesc.Height << ", Format=D24_UNORM_S8_UINT" << std::endl;
+    std::cout << "Configured depth stencil description: Width=" << depthDesc.Width << ", Height=" << depthDesc.Height <<
+            ", Format=D24_UNORM_S8_UINT" << std::endl;
 
-    ID3D11Texture2D* depthStencil;
+    ID3D11Texture2D *depthStencil;
     hr = device->CreateTexture2D(&depthDesc, nullptr, &depthStencil);
     if (FAILED(hr)) {
         std::cout << "ERROR: Failed to create depth stencil texture. Error code: " << hr << std::endl;
@@ -87,7 +90,8 @@ bool Render::Initialize(HWND hwnd, int width, int height) {
 
     // Установка целей рендеринга
     context->OMSetRenderTargets(1, &renderTargetView, depthStencilView);
-    std::cout << "Render targets set: RenderTargetView=" << renderTargetView << ", DepthStencilView=" << depthStencilView << std::endl;
+    std::cout << "Render targets set: RenderTargetView=" << renderTargetView << ", DepthStencilView=" <<
+            depthStencilView << std::endl;
 
     // Настройка области отображения (Viewport)
     D3D11_VIEWPORT viewport = {};
@@ -96,10 +100,11 @@ bool Render::Initialize(HWND hwnd, int width, int height) {
     viewport.MinDepth = 0.0f;
     viewport.MaxDepth = 1.0f;
     context->RSSetViewports(1, &viewport);
-    std::cout << "Viewport set to " << viewport.Width << "x" << viewport.Height << ", MinDepth: " << viewport.MinDepth << ", MaxDepth: " << viewport.MaxDepth << std::endl;
+    std::cout << "Viewport set to " << viewport.Width << "x" << viewport.Height << ", MinDepth: " << viewport.MinDepth
+            << ", MaxDepth: " << viewport.MaxDepth << std::endl;
 
     // Компиляция шейдеров из папки Shaders
-    ID3DBlob* vsBlob, * psBlob;
+    ID3DBlob *vsBlob, *psBlob;
     std::cout << "Compiling vertex shader from ../Shaders/Shader.hlsl..." << std::endl;
     if (!CompileShader(L"../Shaders/Shader.hlsl", "VS", "vs_5_0", &vsBlob)) {
         std::cout << "ERROR: Failed to compile vertex shader." << std::endl;
@@ -137,8 +142,8 @@ bool Render::Initialize(HWND hwnd, int width, int height) {
 
     // Определение входного макета (Input Layout)
     D3D11_INPUT_ELEMENT_DESC layout[] = {
-        { "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 0, D3D11_INPUT_PER_VERTEX_DATA, 0 },
-        { "COLOR", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 12, D3D11_INPUT_PER_VERTEX_DATA, 0 }
+        {"POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 0, D3D11_INPUT_PER_VERTEX_DATA, 0},
+        {"COLOR", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 12, D3D11_INPUT_PER_VERTEX_DATA, 0}
     };
     std::cout << "Creating input layout with 2 elements (POSITION, COLOR)..." << std::endl;
     hr = device->CreateInputLayout(layout, 2, vsBlob->GetBufferPointer(), vsBlob->GetBufferSize(), &inputLayout);
@@ -154,7 +159,8 @@ bool Render::Initialize(HWND hwnd, int width, int height) {
     context->IASetInputLayout(inputLayout);
     context->VSSetShader(vertexShader, nullptr, 0);
     context->PSSetShader(pixelShader, nullptr, 0);
-    std::cout << "Input layout and shaders set for context: InputLayout=" << inputLayout << ", VertexShader=" << vertexShader << ", PixelShader=" << pixelShader << std::endl;
+    std::cout << "Input layout and shaders set for context: InputLayout=" << inputLayout << ", VertexShader=" <<
+            vertexShader << ", PixelShader=" << pixelShader << std::endl;
 
     // Освобождение блобов шейдеров
     vsBlob->Release();
@@ -167,7 +173,7 @@ bool Render::Initialize(HWND hwnd, int width, int height) {
 
 void Render::BeginFrame() {
     std::cout << "=== Beginning frame ===" << std::endl;
-    float clearColor[] = { 0.0f, 0.0f, 0.1f, 1.0f };
+    float clearColor[] = {0.0f, 0.0f, 0.1f, 1.0f};
     context->ClearRenderTargetView(renderTargetView, clearColor);
     std::cout << "Render target cleared with color (0, 0, 0.5, 1)." << std::endl;
     context->ClearDepthStencilView(depthStencilView, D3D11_CLEAR_DEPTH | D3D11_CLEAR_STENCIL, 1.0f, 0);
@@ -223,15 +229,18 @@ void Render::Cleanup() {
     std::cout << "Cleanup completed." << std::endl;
 }
 
-bool Render::CompileShader(const std::wstring& fileName, const std::string& entryPoint, const std::string& target, ID3DBlob** blob) {
+bool Render::CompileShader(const std::wstring &fileName, const std::string &entryPoint, const std::string &target,
+                           ID3DBlob **blob) {
     std::cout << "=== Compiling shader ===" << std::endl;
     std::wcout << L"Checking file: " << fileName << std::endl;
-    std::cout << "File: " << std::wstring_convert<std::codecvt_utf8<wchar_t>>().to_bytes(fileName) << ", Entry point: " << entryPoint << ", Target: " << target << std::endl;
-    ID3DBlob* errorBlob;
-    HRESULT hr = D3DCompileFromFile(fileName.c_str(), nullptr, nullptr, entryPoint.c_str(), target.c_str(), 0, 0, blob, &errorBlob);
+    std::cout << "File: " << std::wstring_convert<std::codecvt_utf8<wchar_t> >().to_bytes(fileName) << ", Entry point: "
+            << entryPoint << ", Target: " << target << std::endl;
+    ID3DBlob *errorBlob;
+    HRESULT hr = D3DCompileFromFile(fileName.c_str(), nullptr, nullptr, entryPoint.c_str(), target.c_str(), 0, 0, blob,
+                                    &errorBlob);
     if (FAILED(hr)) {
         if (errorBlob) {
-            std::cout << "ERROR: Shader compilation failed: " << (char*)errorBlob->GetBufferPointer() << std::endl;
+            std::cout << "ERROR: Shader compilation failed: " << (char *) errorBlob->GetBufferPointer() << std::endl;
             errorBlob->Release();
         } else {
             std::cout << "ERROR: Shader compilation failed with unknown error. HRESULT: " << hr << std::endl;

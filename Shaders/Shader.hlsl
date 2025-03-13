@@ -12,13 +12,13 @@ struct VS_OUTPUT {
     float3 color : COLOR;
 };
 
-VS_OUTPUT VS(VS_INPUT input) { // Точка входа для вершинного шейдера
+VS_OUTPUT VS(VS_INPUT input) {
     VS_OUTPUT output;
     output.pos = mul(float4(input.pos, 1.0f), worldViewProj);
     output.color = input.color;
     return output;
 }
 
-float4 PS(VS_OUTPUT input) : SV_TARGET { // Точка входа для пиксельного шейдера
+float4 PS(VS_OUTPUT input) : SV_TARGET {
     return float4(input.color, 1.0f);
 }

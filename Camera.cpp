@@ -4,7 +4,8 @@
 
 Camera::Camera() : fov(XM_PIDIV4), position(XMFLOAT3(0, 0, -5)), target(XMFLOAT3(0, 0, 0)) {
     std::cout << "=== Camera constructed ===" << std::endl;
-    std::cout << "Initial position: (" << position.x << ", " << position.y << ", " << position.z << "), Target: (" << target.x << ", " << target.y << ", " << target.z << "), FOV: " << fov << std::endl;
+    std::cout << "Initial position: (" << position.x << ", " << position.y << ", " << position.z << "), Target: (" <<
+            target.x << ", " << target.y << ", " << target.z << "), FOV: " << fov << std::endl;
 }
 
 void Camera::Update(float deltaTime) {
@@ -12,7 +13,8 @@ void Camera::Update(float deltaTime) {
 }
 
 XMMATRIX Camera::GetViewMatrix() const {
-    std::cout << "Getting view matrix for position (" << position.x << ", " << position.y << ", " << position.z << ") targeting (" << target.x << ", " << target.y << ", " << target.z << ")" << std::endl;
+    std::cout << "Getting view matrix for position (" << position.x << ", " << position.y << ", " << position.z <<
+            ") targeting (" << target.x << ", " << target.y << ", " << target.z << ")" << std::endl;
     return XMMatrixLookAtLH(XMLoadFloat3(&position), XMLoadFloat3(&target), XMVectorSet(0, 1, 0, 0));
 }
 
@@ -25,9 +27,10 @@ FPSCamera::FPSCamera() {
     std::cout << "=== FPSCamera constructed ===" << std::endl;
     position = XMFLOAT3(0, 0, -5);
     target = XMFLOAT3(0, 0, 0);
-    yaw = 0.0f;   // Начальный угол рыскания
+    yaw = 0.0f; // Начальный угол рыскания
     pitch = 0.0f; // Начальный угол тангажа
-    std::cout << "Initial position set to (0, 0, -5), Target set to (0, 0, 0), Yaw: " << yaw << ", Pitch: " << pitch << std::endl;
+    std::cout << "Initial position set to (0, 0, -5), Target set to (0, 0, 0), Yaw: " << yaw << ", Pitch: " << pitch <<
+            std::endl;
 }
 
 void FPSCamera::Update(float deltaTime) {
@@ -118,11 +121,13 @@ OrbitalCamera::OrbitalCamera() : angle(0), distance(5.0f) {
 
 void OrbitalCamera::Update(float deltaTime) {
     std::cout << "=== Updating OrbitalCamera ===" << std::endl;
-    std::cout << "Current position: (" << position.x << ", " << position.y << ", " << position.z << "), Angle: " << angle << ", Distance: " << distance << std::endl;
+    std::cout << "Current position: (" << position.x << ", " << position.y << ", " << position.z << "), Angle: " <<
+            angle << ", Distance: " << distance << std::endl;
     angle += deltaTime;
     position.x = distance * sin(angle);
     position.z = distance * cos(angle);
-    std::cout << "Orbit calculated. New position: (" << position.x << ", " << position.y << ", " << position.z << ")" << std::endl;
+    std::cout << "Orbit calculated. New position: (" << position.x << ", " << position.y << ", " << position.z << ")" <<
+            std::endl;
     if (GetAsyncKeyState('W') & 0x8000) {
         distance -= 1.0f * deltaTime;
         std::cout << "Zooming in. New distance: " << distance << std::endl;
