@@ -7,7 +7,7 @@ CelestialBody::CelestialBody(ID3D11Device *device, bool isSphere, CelestialBody 
     : parent(parent), orbitSpeed(0), rotationSpeed(0), orbitRadius(0), scale(scale), color(color),
       vertexBuffer(nullptr), indexBuffer(nullptr), indexCount(0), totalOrbitAngle(0.0f),
       orbitInclination(orbitInclination), mass(mass) {
-    std::cout << "Creating CelestialBody with mass: " << mass << std::endl;
+    //std::cout << "Creating CelestialBody with mass: " << mass << std::endl;
     position = XMFLOAT3(0, 0, 0);
     velocity = XMFLOAT3(0, 0, 0);
     rotationQuaternion = XMFLOAT4(0, 0, 0, 1);
@@ -77,8 +77,8 @@ void CelestialBody::Update(float deltaTime, const std::vector<CelestialBody*>& a
     newQuat = XMQuaternionNormalize(newQuat);
     XMStoreFloat4(&rotationQuaternion, newQuat);
 
-    std::cout << "Body at (" << position.x << ", " << position.y << ", " << position.z
-              << "), velocity (" << velocity.x << ", " << velocity.y << ", " << velocity.z << ")" << std::endl;
+    //std::cout << "Body at (" << position.x << ", " << position.y << ", " << position.z
+   //           << "), velocity (" << velocity.x << ", " << velocity.y << ", " << velocity.z << ")" << std::endl;
 }
 
 void CelestialBody::Draw(ID3D11DeviceContext *context, Render &render, const XMMATRIX &view, const XMMATRIX &projection,

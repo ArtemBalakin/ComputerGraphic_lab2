@@ -9,7 +9,7 @@
 #include "Camera.h"
 #include "FollowCamera.h"
 #include <iostream>
-#include "Grid.h"
+#include <random>
 
 using namespace DirectX;
 
@@ -18,17 +18,17 @@ struct ConstantBuffer {
 };
 
 int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE, LPSTR, int nCmdShow) {
-    std::cout << "=== Starting DirectX Gravitational Simulation ===" << std::endl;
+    //std::cout << "=== Starting DirectX Gravitational Simulation ===" << std::endl;
 
-    Window window(800, 600, L"DirectX Gravitational Simulation");
+    Window window(1300, 1000, L"DirectX Gravitational Simulation");
     if (!window.Initialize()) {
-        std::cout << "ERROR: Failed to initialize window." << std::endl;
+        //std::cout << "ERROR: Failed to initialize window." << std::endl;
         return -1;
     }
 
     Render render;
-    if (!render.Initialize(window.GetHandle(), 800, 600)) {
-        std::cout << "ERROR: Failed to initialize render system." << std::endl;
+    if (!render.Initialize(window.GetHandle(), 1300, 1000)) {
+        //std::cout << "ERROR: Failed to initialize render system." << std::endl;
         return -1;
     }
 
@@ -42,43 +42,56 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE, LPSTR, int nCmdShow) {
     ID3D11Buffer *constantBuffer = nullptr;
     HRESULT hr = device->CreateBuffer(&cbDesc, nullptr, &constantBuffer);
     if (FAILED(hr)) {
-        std::cout << "ERROR: Failed to create constant buffer." << std::endl;
+        //std::cout << "ERROR: Failed to create constant buffer." << std::endl;
         return -1;
     }
 
-    // Создаём три планеты с расстояниями 20 и умеренными массами
+    // Вектор для хранения 100 планет
     std::vector<std::unique_ptr<CelestialBody>> bodies;
 
+    // Генератор случайных чисел
+    std::random_device rd;
+    std::mt19937 gen(rd());
+    std::uniform_real_distribution<float> posDist(-25.0f, 25.0f); // Позиции в кубе 50x50x50
+    std::uniform_real_distribution<float> velDist(0.0f, 0.5f);   // Сниженные скорости
+    std::uniform_real_distribution<float> sizeDist(1.0f, 5.0f);   // Размеры чуть больше для видимости
+    std::uniform_real_distribution<float> massDist(1.0f, 50.0f);  // Массы меньше
+    std::uniform_real_distribution<float> colorDist(0.0f, 1.0f);  // Цвета
 
-    bodies.push_back(std::make_unique<CelestialBody>(device, true, nullptr, 1.5f, XMFLOAT3(1.0f, 0.0f, 0.0f), 0.0f, 100.0f));
-    bodies[0]->position = XMFLOAT3(0, 0, 0);
-    bodies[0]->velocity = XMFLOAT3(0, 10, 0);
-    bodies[0]->rotationSpeed = 100.5f;
-    std::cout << "Planet 1: Mass 100, Position (0, 0, 0), Velocity (0, 0, 0), Color Red" << std::endl;
+    // Создаём 100 планет
+    for (int i = 0; i < 100 ; ++i) {
+        XMFLOAT3 position(posDist(gen), posDist(gen), posDist(gen)); // Случайная позиция в кубе 50x50x50
+        XMFLOAT3 color(colorDist(gen), colorDist(gen), colorDist(gen)); // Случайный цвет
+        float size = sizeDist(gen); // Случайный размер
+        float mass = massDist(gen); // Случайная масса
 
-    bodies.push_back(std::make_unique<CelestialBody>(device, true, nullptr, 1.0f, XMFLOAT3(0.0f, 1.0f, 0.0f), 0.0f, 500.0f));
-    bodies[1]->position = XMFLOAT3(20, 0, 0);
-    bodies[1]->velocity = XMFLOAT3(0, -2.0f, 0);
-    bodies[1]->rotationSpeed = 100.7f;
-    std::cout << "Planet 2: Mass 50, Position (20, 0, 0), Velocity (0, 2.0, 0), Color Green" << std::endl;
+        // Скорость направлена к центру с небольшим случайным разбросом, ослаблена
+        XMFLOAT3 velocity(-position.x + velDist(gen),
+                         -position.y  + velDist(gen),
+                         -position.z  + velDist(gen));
 
-    bodies.push_back(std::make_unique<CelestialBody>(device, true, nullptr, 0.8f, XMFLOAT3(0.0f, 0.0f, 1.0f), 0.0f, 30.0f));
-    bodies[2]->position = XMFLOAT3(10, 10, 0); // Расстояние 20
-    bodies[2]->velocity = XMFLOAT3(-2.0f, -10, 0);
-    bodies[2]->rotationSpeed = 0.9f;
-    std::cout << "Planet 3: Mass 30, Position (0, 20, 0), Velocity (-2.0, 0, 0), Color Blue" << std::endl;
+        bodies.push_back(std::make_unique<CelestialBody>(device, true, nullptr, size, color, 0.0f, mass));
+        bodies[i]->position = position;
+        bodies[i]->velocity = velocity;
+        bodies[i]->rotationSpeed = mass * 0.0f; // Вращение пропорционально массе, но слабее
+        //std::cout << "Planet " << i << ": Mass " << mass << ", Position (" << position.x << ", " << position.y << ", " << position.z
+        //          << "), Velocity (" << velocity.x << ", " << velocity.y << ", " << velocity.z << ")" << std::endl;
+    }
 
-    Grid grid(device, 200.0f, 100);
-
+    // Настройка камер
     std::vector<std::unique_ptr<Camera>> cameras;
     cameras.emplace_back(std::make_unique<FPSCamera>());
     cameras.emplace_back(std::make_unique<OrbitalCamera>());
-    cameras.emplace_back(std::make_unique<FollowCamera>(bodies[1].get()));
+    cameras.emplace_back(std::make_unique<FollowCamera>(bodies[0].get()));
     int currentCamera = 0;
-    cameras[0]->position = XMFLOAT3(0, 2.0f, -40.0f);
-    cameras[1]->position = XMFLOAT3(0, 2.0f, -40.0f);
+
+    // Настройка камер для видимости куба 50x50x50
+    cameras[0]->position = XMFLOAT3(0, 30.0f, -80.0f); // FPS-камера: ближе к кубу
+    cameras[0]->target = XMFLOAT3(0, 0, 0);
+    cameras[1]->position = XMFLOAT3(0, 30.0f, -80.0f); // Орбитальная камера: ближе
     cameras[1]->target = XMFLOAT3(0, 0, 0);
-    cameras[2]->position = bodies[1]->position;
+    cameras[2]->position = bodies[0]->position;        // Камера следования
+    cameras[2]->fov = XM_PIDIV2;                       // Широкий угол обзора
 
     LARGE_INTEGER frequency, lastTime;
     QueryPerformanceFrequency(&frequency);
@@ -94,7 +107,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE, LPSTR, int nCmdShow) {
         } else {
             LARGE_INTEGER currentTime;
             QueryPerformanceCounter(&currentTime);
-            float deltaTime = (currentTime.QuadPart - lastTime.QuadPart) / (float)frequency.QuadPart;
+            float deltaTime = (currentTime.QuadPart - lastTime.QuadPart) / (float)frequency.QuadPart; // Ещё больше замедляем
             lastTime = currentTime;
 
             if (GetAsyncKeyState('T') & 0x8000) {
@@ -106,9 +119,9 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE, LPSTR, int nCmdShow) {
             if (GetAsyncKeyState('5') & 0x8000) cameras[currentCamera]->fov = XM_PIDIV4 / 2;
 
             // Обновляем все тела с учётом гравитации
-            std::vector<CelestialBody*> bodyPtrs;
-            for (auto& body : bodies) bodyPtrs.push_back(body.get());
-            for (auto& body : bodies) body->Update(deltaTime, bodyPtrs);
+            std::vector<CelestialBody *> bodyPtrs;
+            for (auto &body : bodies) bodyPtrs.push_back(body.get());
+            for (auto &body : bodies) body->Update(deltaTime, bodyPtrs);
 
             cameras[currentCamera]->Update(deltaTime);
 

@@ -7,7 +7,7 @@ FollowCamera::FollowCamera(CelestialBody *followedObject) : followedObject(follo
         position = followedObject->position; // Изначально ставим камеру на позицию объекта
         target = followedObject->position; // Смотрим на объект
     }
-    std::cout << "FollowCamera constructed with offset (0, 5, -5)" << std::endl;
+    //std::cout << "FollowCamera constructed with offset (0, 5, -5)" << std::endl;
 }
 
 void FollowCamera::Update(float deltaTime) {
@@ -23,12 +23,12 @@ void FollowCamera::Update(float deltaTime) {
         // Камера смотрит на объект
         target = objectPos;
 
-        std::cout << "FollowCamera updated. Position: (" << position.x << ", " << position.y << ", " << position.z
-                << "), Target: (" << target.x << ", " << target.y << ", " << target.z << ")" << std::endl;
+        //std::cout << "FollowCamera updated. Position: (" << position.x << ", " << position.y << ", " << position.z
+        //        << "), Target: (" << target.x << ", " << target.y << ", " << target.z << ")" << std::endl;
     }
 }
 
 XMMATRIX FollowCamera::GetViewMatrix() const {
-    std::cout << "Getting FollowCamera view matrix..." << std::endl;
+    //std::cout << "Getting FollowCamera view matrix..." << std::endl;
     return XMMatrixLookAtLH(XMLoadFloat3(&position), XMLoadFloat3(&target), XMVectorSet(0, 1, 0, 0));
 }
