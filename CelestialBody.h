@@ -1,41 +1,32 @@
-#pragma once
-#include <d3d11.h>
+#ifndef CELESTIALBODY_H
+#define CELESTIALBODY_H
+
 #include <DirectXMath.h>
 #include <vector>
-
-#include "Render.h"
-
-using namespace DirectX;
-
-struct Vertex {
-    XMFLOAT3 pos;
-    XMFLOAT3 color;
-};
+#include <memory>
 
 class CelestialBody {
 public:
-    CelestialBody(ID3D11Device *device, bool isSphere, CelestialBody *parent, float scale, XMFLOAT3 color,
-                  float orbitInclination, float mass = 1.0f);
-    ~CelestialBody();
+    CelestialBody(float x, float y, float z, float s, DirectX::XMFLOAT4 c);
+    ~CelestialBody() = default;
 
-    void Update(float deltaTime, const std::vector<CelestialBody*>& allBodies);
-    void Draw(ID3D11DeviceContext *context, Render &render, const XMMATRIX &view, const XMMATRIX &projection,
-              ID3D11Buffer *constantBuffer);
+    // Проверяет столкновение и возвращает тело, с которым произошло столкновение
+    const CelestialBody* CheckCollision(const CelestialBody* other, DirectX::XMVECTOR& attachmentPoint) const;
 
-    XMFLOAT3 position;  // Позиция тела
-    XMFLOAT3 velocity;  // Вектор скорости
-    float mass;         // Масса тела
+    // Обновляет позицию на основе родителя
+    void Update();
 
-public:
-    CelestialBody *parent;
-    float orbitSpeed, rotationSpeed, orbitRadius, scale;
-    XMFLOAT3 color;
-    ID3D11Buffer *vertexBuffer, *indexBuffer;
-    UINT indexCount;
-    float totalOrbitAngle;
-    float orbitInclination;
-    XMFLOAT4 rotationQuaternion;
+    // Возвращает мировую матрицу для рендеринга
+    DirectX::XMMATRIX GetWorldMatrix() const;
 
-    void CreateSphere(float radius, int slices, int stacks, std::vector<Vertex> &vertices, std::vector<UINT> &indices);
-    void CreateCube(float size, std::vector<Vertex> &vertices, std::vector<UINT> &indices);
+    // Публичные члены
+    DirectX::XMFLOAT3 position;         // Мировая позиция объекта
+    DirectX::XMFLOAT4 rotation;         // Кватернион вращения (для катамари)
+    DirectX::XMMATRIX relativeTransform; // Относительная матрица трансформации (для прикрепленных объектов)
+    DirectX::XMFLOAT4 color;            // Цвет объекта
+    float scale;                        // Масштаб (радиус) объекта
+    CelestialBody* parent;               // Указатель на родительский объект
+    std::vector<CelestialBody*> attachedObjects; // Список прикрепленных объектов
 };
+
+#endif // CELESTIALBODY_H

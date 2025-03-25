@@ -1,25 +1,56 @@
 #include "Render.h"
-
-#include <codecvt>
 #include <d3dcompiler.h>
-#include <iostream>
-#include <locale>
+#pragma comment(lib, "d3d11.lib")
+#pragma comment(lib, "d3dcompiler.lib")
 
-Render::Render() : device(nullptr), context(nullptr), swapChain(nullptr), renderTargetView(nullptr),
-                   depthStencilView(nullptr), vertexShader(nullptr), pixelShader(nullptr), inputLayout(nullptr) {
-    //std::cout << "=== Render object constructed ===" << std::endl;
-}
+struct Vertex {
+    DirectX::XMFLOAT3 pos;
+    DirectX::XMFLOAT3 color;
+};
 
-Render::~Render() {
-    Cleanup();
-    //std::cout << "=== Render object destroyed ===" << std::endl;
+void GenerateSphere(float radius, int slices, int stacks, std::vector<Vertex>& vertices, std::vector<UINT>& indices, bool colored) {
+    for (int i = 0; i <= stacks; ++i) {
+        float theta = i * DirectX::XM_PI / stacks;
+        for (int j = 0; j <= slices; ++j) {
+            float phi = j * 2 * DirectX::XM_PI / slices;
+            float x = sin(theta) * cos(phi);
+            float y = sin(theta) * sin(phi);
+            float z = cos(theta);
+            Vertex v;
+            v.pos = DirectX::XMFLOAT3(x * radius, y * radius, z * radius);
+            if (colored) {
+                v.color = DirectX::XMFLOAT3(theta / DirectX::XM_PI, phi / (2 * DirectX::XM_PI), 0.5f);
+            } else {
+                v.color = DirectX::XMFLOAT3(1, 1, 1);
+            }
+            vertices.push_back(v);
+        }
+    }
+    for (int i = 0; i < stacks; ++i) {
+        for (int j = 0; j < slices; ++j) {
+            int a = i * (slices + 1) + j;
+            int b = a + 1;
+            int c = (i + 1) * (slices + 1) + j;
+            int d = c + 1;
+            indices.push_back(a);
+            indices.push_back(c);
+            indices.push_back(b);
+            indices.push_back(b);
+            indices.push_back(c);
+            indices.push_back(d);
+        }
+    }
 }
 
 bool Render::Initialize(HWND hwnd, int width, int height) {
-    //std::cout << "=== Initializing Render System ===" << std::endl;
-    //std::cout << "Window handle: " << hwnd << ", Width: " << width << ", Height: " << height << std::endl;
+    if (!CreateDeviceAndSwapChain(hwnd, width, height)) return false;
+    if (!CreateRenderTargetAndDepthStencil(width, height)) return false;
+    if (!CreateShadersAndInputLayout()) return false;
+    if (!CreateBuffers()) return false;
+    return true;
+}
 
-    // Настройка описания цепочки обмена (Swap Chain)
+bool Render::CreateDeviceAndSwapChain(HWND hwnd, int width, int height) {
     DXGI_SWAP_CHAIN_DESC scd = {};
     scd.BufferCount = 1;
     scd.BufferDesc.Width = width;
@@ -29,37 +60,18 @@ bool Render::Initialize(HWND hwnd, int width, int height) {
     scd.OutputWindow = hwnd;
     scd.SampleDesc.Count = 1;
     scd.Windowed = TRUE;
-    //std::cout << "Configured swap chain description: BufferCount=" << scd.BufferCount <<
-       //     ", Format=R8G8B8A8_UNORM, Windowed=" << scd.Windowed << std::endl;
 
-    // Создание устройства DirectX и цепочки обмена
-    HRESULT hr = D3D11CreateDeviceAndSwapChain(nullptr, D3D_DRIVER_TYPE_HARDWARE, nullptr, 0, nullptr, 0,
-                                               D3D11_SDK_VERSION, &scd, &swapChain, &device, nullptr, &context);
-    if (FAILED(hr)) {
-        //std::cout << "ERROR: Failed to create device and swap chain. Error code: " << hr << std::endl;
-        return false;
-    }
-    //std::cout << "Device created: " << device << ", SwapChain created: " << swapChain << ", Context created: " <<
-      //      context << std::endl;
+    HRESULT hr = D3D11CreateDeviceAndSwapChain(nullptr, D3D_DRIVER_TYPE_HARDWARE, nullptr, 0,
+        nullptr, 0, D3D11_SDK_VERSION, &scd, &swapChain, &device, nullptr, &deviceContext);
+    return SUCCEEDED(hr);
+}
 
-    // Получение заднего буфера и создание Render Target View
-    ID3D11Texture2D *backBuffer;
-    hr = swapChain->GetBuffer(0, __uuidof(ID3D11Texture2D), (void **) &backBuffer);
-    if (FAILED(hr)) {
-        //std::cout << "ERROR: Failed to get back buffer. Error code: " << hr << std::endl;
-        return false;
-    }
-    //std::cout << "Back buffer retrieved: " << backBuffer << std::endl;
-
-    hr = device->CreateRenderTargetView(backBuffer, nullptr, &renderTargetView);
+bool Render::CreateRenderTargetAndDepthStencil(int width, int height) {
+    ID3D11Texture2D* backBuffer;
+    swapChain->GetBuffer(0, IID_PPV_ARGS(&backBuffer));
+    device->CreateRenderTargetView(backBuffer, nullptr, &renderTargetView);
     backBuffer->Release();
-    if (FAILED(hr)) {
-        //std::cout << "ERROR: Failed to create render target view. Error code: " << hr << std::endl;
-        return false;
-    }
-    //std::cout << "Render target view created: " << renderTargetView << std::endl;
 
-    // Создание текстуры глубины и трафарета (Depth Stencil)
     D3D11_TEXTURE2D_DESC depthDesc = {};
     depthDesc.Width = width;
     depthDesc.Height = height;
@@ -69,185 +81,174 @@ bool Render::Initialize(HWND hwnd, int width, int height) {
     depthDesc.SampleDesc.Count = 1;
     depthDesc.Usage = D3D11_USAGE_DEFAULT;
     depthDesc.BindFlags = D3D11_BIND_DEPTH_STENCIL;
-    //std::cout << "Configured depth stencil description: Width=" << depthDesc.Width << ", Height=" << depthDesc.Height <<
-        //    ", Format=D24_UNORM_S8_UINT" << std::endl;
 
-    ID3D11Texture2D *depthStencil;
-    hr = device->CreateTexture2D(&depthDesc, nullptr, &depthStencil);
-    if (FAILED(hr)) {
-        //std::cout << "ERROR: Failed to create depth stencil texture. Error code: " << hr << std::endl;
-        return false;
-    }
-    //std::cout << "Depth stencil texture created: " << depthStencil << std::endl;
-
-    hr = device->CreateDepthStencilView(depthStencil, nullptr, &depthStencilView);
+    ID3D11Texture2D* depthStencil;
+    device->CreateTexture2D(&depthDesc, nullptr, &depthStencil);
+    device->CreateDepthStencilView(depthStencil, nullptr, &depthStencilView);
     depthStencil->Release();
+
+    deviceContext->OMSetRenderTargets(1, &renderTargetView, depthStencilView);
+    D3D11_VIEWPORT viewport = { 0, 0, (float)width, (float)height, 0.0f, 1.0f };
+    deviceContext->RSSetViewports(1, &viewport);
+    return true;
+}
+
+bool Render::CreateShadersAndInputLayout() {
+    const char* vsCode = R"(
+        cbuffer ConstantBuffer : register(b0) {
+            float4x4 world;
+            float4x4 viewProj;
+            float3 objectColor;
+        }
+        struct VS_INPUT {
+            float3 pos : POSITION;
+            float3 color : COLOR;
+        };
+        struct PS_INPUT {
+            float4 pos : SV_POSITION;
+            float3 color : COLOR;
+        };
+        PS_INPUT main(VS_INPUT input) {
+            PS_INPUT output;
+            float4 pos = float4(input.pos, 1.0);
+            pos = mul(pos, world);
+            pos = mul(pos, viewProj);
+            output.pos = pos;
+            output.color = input.color * objectColor;
+            return output;
+        }
+    )";
+
+    const char* psCode = R"(
+        struct PS_INPUT {
+            float4 pos : SV_POSITION;
+            float3 color : COLOR;
+        };
+        float4 main(PS_INPUT input) : SV_TARGET {
+            return float4(input.color, 1.0);
+        }
+    )";
+
+    ID3DBlob* vsBlob, * psBlob, * errorBlob;
+    HRESULT hr = D3DCompile(vsCode, strlen(vsCode), nullptr, nullptr, nullptr, "main", "vs_5_0", 0, 0, &vsBlob, &errorBlob);
     if (FAILED(hr)) {
-        //std::cout << "ERROR: Failed to create depth stencil view. Error code: " << hr << std::endl;
+        if (errorBlob) errorBlob->Release();
         return false;
     }
-    //std::cout << "Depth stencil view created: " << depthStencilView << std::endl;
 
-    // Установка целей рендеринга
-    context->OMSetRenderTargets(1, &renderTargetView, depthStencilView);
-    //std::cout << "Render targets set: RenderTargetView=" << renderTargetView << ", DepthStencilView=" <<
-    //        depthStencilView << std::endl;
-
-    // Настройка области отображения (Viewport)
-    D3D11_VIEWPORT viewport = {};
-    viewport.Width = static_cast<float>(width);
-    viewport.Height = static_cast<float>(height);
-    viewport.MinDepth = 0.0f;
-    viewport.MaxDepth = 1.0f;
-    context->RSSetViewports(1, &viewport);
-    //std::cout << "Viewport set to " << viewport.Width << "x" << viewport.Height << ", MinDepth: " << viewport.MinDepth
-         //   << ", MaxDepth: " << viewport.MaxDepth << std::endl;
-
-    // Компиляция шейдеров из папки Shaders
-    ID3DBlob *vsBlob, *psBlob;
-    //std::cout << "Compiling vertex shader from ../Shaders/Shader.hlsl..." << std::endl;
-    if (!CompileShader(L"../Shaders/Shader.hlsl", "VS", "vs_5_0", &vsBlob)) {
-        //std::cout << "ERROR: Failed to compile vertex shader." << std::endl;
-        return false;
-    }
-    //std::cout << "Vertex shader compiled successfully." << std::endl;
-
-    //std::cout << "Compiling pixel shader from ../Shaders/Shader.hlsl..." << std::endl;
-    if (!CompileShader(L"../Shaders/Shader.hlsl", "PS", "ps_5_0", &psBlob)) {
-        //std::cout << "ERROR: Failed to compile pixel shader." << std::endl;
+    hr = D3DCompile(psCode, strlen(psCode), nullptr, nullptr, nullptr, "main", "ps_5_0", 0, 0, &psBlob, &errorBlob);
+    if (FAILED(hr)) {
+        if (errorBlob) errorBlob->Release();
         vsBlob->Release();
         return false;
     }
-    //std::cout << "Pixel shader compiled successfully." << std::endl;
 
-    // Создание вершинного шейдера
-    hr = device->CreateVertexShader(vsBlob->GetBufferPointer(), vsBlob->GetBufferSize(), nullptr, &vertexShader);
-    if (FAILED(hr)) {
-        //std::cout << "ERROR: Failed to create vertex shader. Error code: " << hr << std::endl;
-        vsBlob->Release();
-        psBlob->Release();
-        return false;
-    }
-    //std::cout << "Vertex shader created: " << vertexShader << std::endl;
+    device->CreateVertexShader(vsBlob->GetBufferPointer(), vsBlob->GetBufferSize(), nullptr, &vertexShader);
+    device->CreatePixelShader(psBlob->GetBufferPointer(), psBlob->GetBufferSize(), nullptr, &pixelShader);
 
-    // Создание пиксельного шейдера
-    hr = device->CreatePixelShader(psBlob->GetBufferPointer(), psBlob->GetBufferSize(), nullptr, &pixelShader);
-    if (FAILED(hr)) {
-        //std::cout << "ERROR: Failed to create pixel shader. Error code: " << hr << std::endl;
-        vsBlob->Release();
-        psBlob->Release();
-        return false;
-    }
-    //std::cout << "Pixel shader created: " << pixelShader << std::endl;
-
-    // Определение входного макета (Input Layout)
-    D3D11_INPUT_ELEMENT_DESC layout[] = {
+    D3D11_INPUT_ELEMENT_DESC ied[] = {
         {"POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 0, D3D11_INPUT_PER_VERTEX_DATA, 0},
         {"COLOR", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 12, D3D11_INPUT_PER_VERTEX_DATA, 0}
     };
-    //std::cout << "Creating input layout with 2 elements (POSITION, COLOR)..." << std::endl;
-    hr = device->CreateInputLayout(layout, 2, vsBlob->GetBufferPointer(), vsBlob->GetBufferSize(), &inputLayout);
-    if (FAILED(hr)) {
-        //std::cout << "ERROR: Failed to create input layout. Error code: " << hr << std::endl;
-        vsBlob->Release();
-        psBlob->Release();
-        return false;
-    }
-    //std::cout << "Input layout created: " << inputLayout << std::endl;
+    device->CreateInputLayout(ied, 2, vsBlob->GetBufferPointer(), vsBlob->GetBufferSize(), &inputLayout);
 
-    // Установка входного макета и шейдеров
-    context->IASetInputLayout(inputLayout);
-    context->VSSetShader(vertexShader, nullptr, 0);
-    context->PSSetShader(pixelShader, nullptr, 0);
-    //std::cout << "Input layout and shaders set for context: InputLayout=" << inputLayout << ", VertexShader=" <<
-    //        vertexShader << ", PixelShader=" << pixelShader << std::endl;
-
-    // Освобождение блобов шейдеров
     vsBlob->Release();
     psBlob->Release();
-    //std::cout << "Shader blobs released." << std::endl;
-
-    //std::cout << "=== Render System Initialized Successfully ===" << std::endl;
     return true;
 }
 
-void Render::BeginFrame() {
-    //std::cout << "=== Beginning frame ===" << std::endl;
-    float clearColor[] = {0.0f, 0.0f, 0.1f, 1.0f};
-    context->ClearRenderTargetView(renderTargetView, clearColor);
-    //std::cout << "Render target cleared with color (0, 0, 0.5, 1)." << std::endl;
-    context->ClearDepthStencilView(depthStencilView, D3D11_CLEAR_DEPTH | D3D11_CLEAR_STENCIL, 1.0f, 0);
-    //std::cout << "Depth stencil cleared with depth 1.0." << std::endl;
+bool Render::CreateBuffers() {
+    std::vector<Vertex> verticesKatamari;
+    std::vector<UINT> indicesKatamari;
+    GenerateSphere(1.0f, 30, 30, verticesKatamari, indicesKatamari, true); // Увеличены slices и stacks для сглаживания
+
+    std::vector<Vertex> verticesObject;
+    std::vector<UINT> indicesObject;
+    GenerateSphere(1.0f, 30, 30, verticesObject, indicesObject, false);
+
+    D3D11_BUFFER_DESC bd = {};
+    bd.Usage = D3D11_USAGE_DEFAULT;
+    bd.ByteWidth = sizeof(Vertex) * verticesKatamari.size();
+    bd.BindFlags = D3D11_BIND_VERTEX_BUFFER;
+    D3D11_SUBRESOURCE_DATA initData = {};
+    initData.pSysMem = verticesKatamari.data();
+    device->CreateBuffer(&bd, &initData, &vertexBufferKatamari);
+
+    bd.ByteWidth = sizeof(UINT) * indicesKatamari.size();
+    bd.BindFlags = D3D11_BIND_INDEX_BUFFER;
+    initData.pSysMem = indicesKatamari.data();
+    device->CreateBuffer(&bd, &initData, &indexBufferKatamari);
+    indexCountKatamari = indicesKatamari.size();
+
+    bd.ByteWidth = sizeof(Vertex) * verticesObject.size();
+    initData.pSysMem = verticesObject.data();
+    device->CreateBuffer(&bd, &initData, &vertexBufferObject);
+
+    bd.ByteWidth = sizeof(UINT) * indicesObject.size();
+    initData.pSysMem = indicesObject.data();
+    device->CreateBuffer(&bd, &initData, &indexBufferObject);
+    indexCountObject = indicesObject.size();
+
+    bd.ByteWidth = sizeof(ConstantBuffer);
+    bd.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
+    device->CreateBuffer(&bd, nullptr, &constantBuffer);
+    return true;
 }
 
-void Render::EndFrame() {
-    //std::cout << "Presenting frame..." << std::endl;
-    swapChain->Present(1, 0);
-    //std::cout << "Frame presented successfully." << std::endl;
-}
+void Render::RenderScene(FollowCamera* camera, const std::vector<std::unique_ptr<CelestialBody>>& bodies, Grid* grid) {
+    float clearColor[] = { 0.0f, 0.2f, 0.4f, 1.0f };
+    deviceContext->ClearRenderTargetView(renderTargetView, clearColor);
+    deviceContext->ClearDepthStencilView(depthStencilView, D3D11_CLEAR_DEPTH, 1.0f, 0);
 
-void Render::DrawIndexed(UINT indexCount) {
-    //std::cout << "Drawing " << indexCount << " indices..." << std::endl;
-    context->DrawIndexed(indexCount, 0, 0);
-    //std::cout << "DrawIndexed call completed." << std::endl;
+    deviceContext->VSSetShader(vertexShader, nullptr, 0);
+    deviceContext->PSSetShader(pixelShader, nullptr, 0);
+    deviceContext->IASetInputLayout(inputLayout);
+
+    UINT stride = sizeof(Vertex);
+    UINT offset = 0;
+
+    grid->Draw(deviceContext);
+
+    deviceContext->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+    deviceContext->IASetVertexBuffers(0, 1, &vertexBufferKatamari, &stride, &offset);
+    deviceContext->IASetIndexBuffer(indexBufferKatamari, DXGI_FORMAT_R32_UINT, 0);
+
+    ConstantBuffer cb;
+    XMStoreFloat4x4(&cb.viewProj, XMMatrixTranspose(camera->GetViewProjection()));
+
+    // Отрисовка Katamari
+    XMStoreFloat4x4(&cb.world, XMMatrixTranspose(bodies[0]->GetWorldMatrix()));
+    cb.objectColor = DirectX::XMFLOAT3(bodies[0]->color.x, bodies[0]->color.y, bodies[0]->color.z);
+    deviceContext->UpdateSubresource(constantBuffer, 0, nullptr, &cb, 0, 0);
+    deviceContext->VSSetConstantBuffers(0, 1, &constantBuffer);
+    deviceContext->PSSetConstantBuffers(0, 1, &constantBuffer);
+    deviceContext->DrawIndexed(indexCountKatamari, 0, 0);
+
+    // Отрисовка всех объектов
+    deviceContext->IASetVertexBuffers(0, 1, &vertexBufferObject, &stride, &offset);
+    deviceContext->IASetIndexBuffer(indexBufferObject, DXGI_FORMAT_R32_UINT, 0);
+    for (size_t i = 1; i < bodies.size(); ++i) {
+        XMStoreFloat4x4(&cb.world, XMMatrixTranspose(bodies[i]->GetWorldMatrix()));
+        cb.objectColor = DirectX::XMFLOAT3(bodies[i]->color.x, bodies[i]->color.y, bodies[i]->color.z);
+        deviceContext->UpdateSubresource(constantBuffer, 0, nullptr, &cb, 0, 0);
+        deviceContext->DrawIndexed(indexCountObject, 0, 0);
+    }
+
+    swapChain->Present(0, 0);
 }
 
 void Render::Cleanup() {
-    //std::cout << "=== Cleaning up render resources ===" << std::endl;
-    if (inputLayout) {
-        inputLayout->Release();
-        //std::cout << "Input layout released." << std::endl;
-    }
-    if (vertexShader) {
-        vertexShader->Release();
-        //std::cout << "Vertex shader released." << std::endl;
-    }
-    if (pixelShader) {
-        pixelShader->Release();
-        //std::cout << "Pixel shader released." << std::endl;
-    }
-    if (depthStencilView) {
-        depthStencilView->Release();
-        //std::cout << "Depth stencil view released." << std::endl;
-    }
-    if (renderTargetView) {
-        renderTargetView->Release();
-        //std::cout << "Render target view released." << std::endl;
-    }
-    if (swapChain) {
-        swapChain->Release();
-        //std::cout << "Swap chain released." << std::endl;
-    }
-    if (context) {
-        context->Release();
-        //std::cout << "Device context released." << std::endl;
-    }
-    if (device) {
-        device->Release();
-        //std::cout << "Device released." << std::endl;
-    }
-    //std::cout << "Cleanup completed." << std::endl;
-}
-
-bool Render::CompileShader(const std::wstring &fileName, const std::string &entryPoint, const std::string &target,
-                           ID3DBlob **blob) {
-    //std::cout << "=== Compiling shader ===" << std::endl;
-    std::wcout << L"Checking file: " << fileName << std::endl;
-    //std::cout << "File: " << std::wstring_convert<std::codecvt_utf8<wchar_t> >().to_bytes(fileName) << ", Entry point: "
-     //       << entryPoint << ", Target: " << target << std::endl;
-    ID3DBlob *errorBlob;
-    HRESULT hr = D3DCompileFromFile(fileName.c_str(), nullptr, nullptr, entryPoint.c_str(), target.c_str(), 0, 0, blob,
-                                    &errorBlob);
-    if (FAILED(hr)) {
-        if (errorBlob) {
-            //std::cout << "ERROR: Shader compilation failed: " << (char *) errorBlob->GetBufferPointer() << std::endl;
-            errorBlob->Release();
-        } else {
-            //std::cout << "ERROR: Shader compilation failed with unknown error. HRESULT: " << hr << std::endl;
-        }
-        return false;
-    }
-    if (errorBlob) errorBlob->Release();
-    //std::cout << "Shader compiled successfully. Blob size: " << (*blob)->GetBufferSize() << " bytes." << std::endl;
-    return true;
+    if (constantBuffer) constantBuffer->Release();
+    if (indexBufferKatamari) indexBufferKatamari->Release();
+    if (vertexBufferKatamari) vertexBufferKatamari->Release();
+    if (indexBufferObject) indexBufferObject->Release();
+    if (vertexBufferObject) vertexBufferObject->Release();
+    if (inputLayout) inputLayout->Release();
+    if (pixelShader) pixelShader->Release();
+    if (vertexShader) vertexShader->Release();
+    if (depthStencilView) depthStencilView->Release();
+    if (renderTargetView) renderTargetView->Release();
+    if (swapChain) swapChain->Release();
+    if (deviceContext) deviceContext->Release();
+    if (device) device->Release();
 }

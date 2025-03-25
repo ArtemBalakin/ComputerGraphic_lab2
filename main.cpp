@@ -1,141 +1,149 @@
-#include <d3d11.h>
-#include <DirectXMath.h>
+#include <Windows.h>
+#include <iostream>
 #include <vector>
 #include <memory>
-#include <windows.h>
+#include "CelestialBody.h"
+#include "FollowCamera.h"
 #include "Render.h"
 #include "Window.h"
-#include "CelestialBody.h"
-#include "Camera.h"
-#include "FollowCamera.h"
-#include <iostream>
-#include <random>
-
-using namespace DirectX;
-
-struct ConstantBuffer {
-    XMMATRIX worldViewProj;
-};
+#include "Grid.h"
 
 int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE, LPSTR, int nCmdShow) {
-    //std::cout << "=== Starting DirectX Gravitational Simulation ===" << std::endl;
-
-    Window window(1300, 1000, L"DirectX Gravitational Simulation");
-    if (!window.Initialize()) {
-        //std::cout << "ERROR: Failed to initialize window." << std::endl;
+    Window window;
+    if (!window.Initialize(hInstance, 800, 600, L"Katamari Simulation")) {
         return -1;
     }
 
     Render render;
-    if (!render.Initialize(window.GetHandle(), 1300, 1000)) {
-        //std::cout << "ERROR: Failed to initialize render system." << std::endl;
+    if (!render.Initialize(window.GetHWND(), 800, 600)) {
         return -1;
     }
 
-    ID3D11Device *device = render.GetDevice();
-    ID3D11DeviceContext *context = render.GetContext();
+    Grid grid(render.device, 100.0f, 50);
 
-    D3D11_BUFFER_DESC cbDesc = {};
-    cbDesc.Usage = D3D11_USAGE_DEFAULT;
-    cbDesc.ByteWidth = sizeof(ConstantBuffer);
-    cbDesc.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
-    ID3D11Buffer *constantBuffer = nullptr;
-    HRESULT hr = device->CreateBuffer(&cbDesc, nullptr, &constantBuffer);
-    if (FAILED(hr)) {
-        //std::cout << "ERROR: Failed to create constant buffer." << std::endl;
-        return -1;
-    }
-
-    // Вектор для хранения 100 планет
     std::vector<std::unique_ptr<CelestialBody>> bodies;
+    bodies.push_back(std::make_unique<CelestialBody>(0.0f, 1.0f, 0.0f, 1.0f, DirectX::XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f)));
 
-    // Генератор случайных чисел
-    std::random_device rd;
-    std::mt19937 gen(rd());
-    std::uniform_real_distribution<float> posDist(-25.0f, 25.0f); // Позиции в кубе 50x50x50
-    std::uniform_real_distribution<float> velDist(0.0f, 0.5f);   // Сниженные скорости
-    std::uniform_real_distribution<float> sizeDist(1.0f, 5.0f);   // Размеры чуть больше для видимости
-    std::uniform_real_distribution<float> massDist(1.0f, 50.0f);  // Массы меньше
-    std::uniform_real_distribution<float> colorDist(0.0f, 1.0f);  // Цвета
-
-    // Создаём 100 планет
-    for (int i = 0; i < 100 ; ++i) {
-        XMFLOAT3 position(posDist(gen), posDist(gen), posDist(gen)); // Случайная позиция в кубе 50x50x50
-        XMFLOAT3 color(colorDist(gen), colorDist(gen), colorDist(gen)); // Случайный цвет
-        float size = sizeDist(gen); // Случайный размер
-        float mass = massDist(gen); // Случайная масса
-
-        // Скорость направлена к центру с небольшим случайным разбросом, ослаблена
-        XMFLOAT3 velocity(-position.x + velDist(gen),
-                         -position.y  + velDist(gen),
-                         -position.z  + velDist(gen));
-
-        bodies.push_back(std::make_unique<CelestialBody>(device, true, nullptr, size, color, 0.0f, mass));
-        bodies[i]->position = position;
-        bodies[i]->velocity = velocity;
-        bodies[i]->rotationSpeed = mass * 0.0f; // Вращение пропорционально массе, но слабее
-        //std::cout << "Planet " << i << ": Mass " << mass << ", Position (" << position.x << ", " << position.y << ", " << position.z
-        //          << "), Velocity (" << velocity.x << ", " << velocity.y << ", " << velocity.z << ")" << std::endl;
+    for (int i = 0; i < 200; ++i) {
+        float x = (rand() % 1000 - 500) * 0.1f;
+        float z = (rand() % 1000 - 500) * 0.1f;
+        float r = (rand() % 100) / 100.0f;
+        float g = (rand() % 100) / 100.0f;
+        float b = (rand() % 100) / 100.0f;
+        float scale = 0.2f + (rand() % 50) / 100.0f;
+        bodies.push_back(std::make_unique<CelestialBody>(x, scale, z, scale, DirectX::XMFLOAT4(r, g, b, 1.0f)));
     }
 
-    // Настройка камер
-    std::vector<std::unique_ptr<Camera>> cameras;
-    cameras.emplace_back(std::make_unique<FPSCamera>());
-    cameras.emplace_back(std::make_unique<OrbitalCamera>());
-    cameras.emplace_back(std::make_unique<FollowCamera>(bodies[0].get()));
-    int currentCamera = 0;
-
-    // Настройка камер для видимости куба 50x50x50
-    cameras[0]->position = XMFLOAT3(0, 30.0f, -80.0f); // FPS-камера: ближе к кубу
-    cameras[0]->target = XMFLOAT3(0, 0, 0);
-    cameras[1]->position = XMFLOAT3(0, 30.0f, -80.0f); // Орбитальная камера: ближе
-    cameras[1]->target = XMFLOAT3(0, 0, 0);
-    cameras[2]->position = bodies[0]->position;        // Камера следования
-    cameras[2]->fov = XM_PIDIV2;                       // Широкий угол обзора
-
-    LARGE_INTEGER frequency, lastTime;
-    QueryPerformanceFrequency(&frequency);
-    QueryPerformanceCounter(&lastTime);
-
-    window.Show();
+    FollowCamera camera(DirectX::XMFLOAT3(0, 5, -10), DirectX::XMFLOAT3(0, 0, 0));
 
     MSG msg = {};
+    DirectX::XMVECTOR velocity = DirectX::XMVectorZero();
+    const float maxSpeed = 5.0f;
+    const float acceleration = 0.8f;
+    const float friction = 0.02f;
+    const float rotationSpeed = 1.0f;
+
     while (msg.message != WM_QUIT) {
         if (PeekMessage(&msg, nullptr, 0, 0, PM_REMOVE)) {
             TranslateMessage(&msg);
             DispatchMessage(&msg);
-        } else {
-            LARGE_INTEGER currentTime;
-            QueryPerformanceCounter(&currentTime);
-            float deltaTime = (currentTime.QuadPart - lastTime.QuadPart) / (float)frequency.QuadPart; // Ещё больше замедляем
-            lastTime = currentTime;
+        }
+        else {
+            float deltaTime = 0.016f;
 
-            if (GetAsyncKeyState('T') & 0x8000) {
-                currentCamera = (currentCamera + 1) % cameras.size();
-                Sleep(200);
+            CelestialBody* katamari = bodies[0].get();
+            DirectX::XMVECTOR pos = DirectX::XMLoadFloat3(&katamari->position);
+            DirectX::XMVECTOR forward = camera.GetForward();
+            DirectX::XMVECTOR right = camera.GetRight();
+            DirectX::XMVECTOR targetVelocity = DirectX::XMVectorZero();
+
+            if (GetAsyncKeyState('W') & 0x8000) {
+                targetVelocity = DirectX::XMVectorAdd(targetVelocity, DirectX::XMVectorScale(forward, maxSpeed));
             }
-            if (GetAsyncKeyState('3') & 0x8000) cameras[currentCamera]->fov = XM_PIDIV4;
-            if (GetAsyncKeyState('4') & 0x8000) cameras[currentCamera]->fov = XM_PIDIV2;
-            if (GetAsyncKeyState('5') & 0x8000) cameras[currentCamera]->fov = XM_PIDIV4 / 2;
-
-            // Обновляем все тела с учётом гравитации
-            std::vector<CelestialBody *> bodyPtrs;
-            for (auto &body : bodies) bodyPtrs.push_back(body.get());
-            for (auto &body : bodies) body->Update(deltaTime, bodyPtrs);
-
-            cameras[currentCamera]->Update(deltaTime);
-
-            render.BeginFrame();
-
-            for (size_t i = 0; i < bodies.size(); ++i) {
-                bodies[i]->Draw(context, render, cameras[currentCamera]->GetViewMatrix(),
-                                cameras[currentCamera]->GetProjectionMatrix(), constantBuffer);
+            if (GetAsyncKeyState('S') & 0x8000) {
+                targetVelocity = DirectX::XMVectorSubtract(targetVelocity, DirectX::XMVectorScale(forward, maxSpeed));
             }
-            render.EndFrame();
+            if (GetAsyncKeyState('A') & 0x8000) {
+                targetVelocity = DirectX::XMVectorSubtract(targetVelocity, DirectX::XMVectorScale(right, maxSpeed));
+            }
+            if (GetAsyncKeyState('D') & 0x8000) {
+                targetVelocity = DirectX::XMVectorAdd(targetVelocity, DirectX::XMVectorScale(right, maxSpeed));
+            }
+
+            if (GetAsyncKeyState('Q') & 0x8000) {
+                camera.Rotate(rotationSpeed * deltaTime);
+                DirectX::XMVECTOR currentRotation = DirectX::XMLoadFloat4(&katamari->rotation);
+                DirectX::XMVECTOR deltaRotation = DirectX::XMQuaternionRotationAxis(DirectX::XMVectorSet(0, 1, 0, 0), rotationSpeed * deltaTime);
+                DirectX::XMStoreFloat4(&katamari->rotation, DirectX::XMQuaternionMultiply(currentRotation, deltaRotation));
+            }
+            if (GetAsyncKeyState('E') & 0x8000) {
+                camera.Rotate(-rotationSpeed * deltaTime);
+                DirectX::XMVECTOR currentRotation = DirectX::XMLoadFloat4(&katamari->rotation);
+                DirectX::XMVECTOR deltaRotation = DirectX::XMQuaternionRotationAxis(DirectX::XMVectorSet(0, 1, 0, 0), -rotationSpeed * deltaTime);
+                DirectX::XMStoreFloat4(&katamari->rotation, DirectX::XMQuaternionMultiply(currentRotation, deltaRotation));
+            }
+
+            velocity = DirectX::XMVectorLerp(velocity, targetVelocity, acceleration);
+            velocity = DirectX::XMVectorScale(velocity, 1.0f - friction);
+            DirectX::XMVECTOR movement = DirectX::XMVectorScale(velocity, deltaTime);
+            pos = DirectX::XMVectorAdd(pos, movement);
+
+            float newY = DirectX::XMVectorGetY(pos);
+            if (newY < katamari->scale) {
+                newY = katamari->scale;
+                velocity = DirectX::XMVectorSetY(velocity, 0);
+            }
+            DirectX::XMStoreFloat3(&katamari->position, DirectX::XMVectorSetY(pos, newY));
+
+            if (DirectX::XMVectorGetX(DirectX::XMVector3Length(velocity)) > 0.001f) {
+                DirectX::XMVECTOR direction = DirectX::XMVector3Normalize(velocity);
+                DirectX::XMVECTOR axis = DirectX::XMVector3Cross(DirectX::XMVectorSet(0, 1, 0, 0), direction);
+                float speed = DirectX::XMVectorGetX(DirectX::XMVector3Length(velocity));
+                float angle = speed * deltaTime * 2.0f;
+                DirectX::XMVECTOR deltaRotation = DirectX::XMQuaternionRotationAxis(axis, angle);
+                DirectX::XMVECTOR currentRotation = DirectX::XMLoadFloat4(&katamari->rotation);
+                DirectX::XMVECTOR newRotation = DirectX::XMQuaternionMultiply(currentRotation, deltaRotation);
+                DirectX::XMStoreFloat4(&katamari->rotation, DirectX::XMQuaternionNormalize(newRotation));
+            }
+
+            // Обновленная проверка столкновений с иерархическим прикреплением
+            for (auto it = bodies.begin() + 1; it != bodies.end();) {
+                CelestialBody* obj = it->get();
+                if (!obj->parent) {
+                    DirectX::XMVECTOR attachmentPoint;
+                    const CelestialBody* collidedBody = katamari->CheckCollision(obj, attachmentPoint);
+                    if (collidedBody) {
+                        // Прикрепляем объект к телу, с которым произошло столкновение
+                        obj->parent = const_cast<CelestialBody*>(collidedBody);
+                        const_cast<CelestialBody*>(collidedBody)->attachedObjects.push_back(obj);
+
+                        // Вычисляем мировую матрицу объекта и родителя
+                        DirectX::XMMATRIX parentWorld = collidedBody->GetWorldMatrix();
+                        DirectX::XMMATRIX invParentWorld = DirectX::XMMatrixInverse(nullptr, parentWorld);
+                        DirectX::XMMATRIX objWorld = DirectX::XMMatrixScaling(obj->scale, obj->scale, obj->scale) *
+                                                    DirectX::XMMatrixTranslation(obj->position.x, obj->position.y, obj->position.z);
+
+                        // Вычисляем относительную трансформацию
+                        obj->relativeTransform = objWorld * invParentWorld;
+                        ++it;
+                    } else {
+                        ++it;
+                    }
+                } else {
+                    ++it;
+                }
+            }
+
+            // Обновляем все тела
+            for (const auto& body : bodies) {
+                body->Update();
+            }
+
+            camera.Update(bodies[0]->position, static_cast<float>(bodies[0]->attachedObjects.size()));
+            render.RenderScene(&camera, bodies, &grid);
         }
     }
 
-    if (constantBuffer) constantBuffer->Release();
     render.Cleanup();
     window.Cleanup();
     return static_cast<int>(msg.wParam);
