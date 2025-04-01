@@ -1,30 +1,79 @@
 #include "Window.h"
 
-bool Window::Initialize(HINSTANCE hInstance, int width, int height, const wchar_t* title) {
-    WNDCLASS wc = {};
-    wc.lpfnWndProc = WndProc;
-    wc.hInstance = hInstance;
-    wc.lpszClassName = L"KatamariWindowClass";
-    RegisterClass(&wc);
 
-    hwnd = CreateWindow(L"KatamariWindowClass", title, WS_OVERLAPPEDWINDOW,
-        CW_USEDEFAULT, CW_USEDEFAULT, width, height, nullptr, nullptr, hInstance, nullptr);
-    if (!hwnd) return false;
+
+Window::Window(int width, int height, const wchar_t* title)
+
+    : hwnd(nullptr), width(width), height(height) {
+
+    std::cout << "[Window] Constructor called: width=" << width << ", height=" << height << std::endl;
+
+}
+
+
+
+Window::~Window() {
+
+    if (hwnd) {
+
+        DestroyWindow(hwnd);
+
+        std::cout << "[Window] Window destroyed" << std::endl;
+
+    }
+
+}
+
+
+
+bool Window::Initialize() {
+
+    std::cout << "[Window] Initializing window..." << std::endl;
+
+
+
+    WNDCLASS wc = {};
+
+    wc.lpfnWndProc = DefWindowProc;
+
+    wc.hInstance = GetModuleHandle(nullptr);
+
+    wc.lpszClassName = L"CG_Lab1_WindowClass";
+
+    if (!RegisterClass(&wc)) {
+
+        std::cerr << "[Window] Failed to register window class" << std::endl;
+
+        return false;
+
+    }
+
+
+
+    hwnd = CreateWindowEx(
+
+        0, L"CG_Lab1_WindowClass", L"CG_Lab1",
+
+        WS_OVERLAPPEDWINDOW, CW_USEDEFAULT, CW_USEDEFAULT,
+
+        width, height, nullptr, nullptr, GetModuleHandle(nullptr), nullptr
+
+    );
+
+    if (!hwnd) {
+
+        std::cerr << "[Window] Failed to create window" << std::endl;
+
+        return false;
+
+    }
+
+
 
     ShowWindow(hwnd, SW_SHOW);
-    UpdateWindow(hwnd);
+
+    std::cout << "[Window] Window created successfully: hwnd=" << hwnd << std::endl;
+
     return true;
-}
 
-void Window::Cleanup() {
-    if (hwnd) DestroyWindow(hwnd);
-}
-
-LRESULT CALLBACK Window::WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
-    switch (msg) {
-        case WM_DESTROY:
-            PostQuitMessage(0);
-        return 0;
-    }
-    return DefWindowProc(hwnd, msg, wParam, lParam);
 }

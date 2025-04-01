@@ -1,15 +1,15 @@
-#ifndef WINDOW_H
-#define WINDOW_H
-#include <Windows.h>
+#pragma once
+#include <windows.h>
+#include <iostream>
 
 class Window {
 public:
-    bool Initialize(HINSTANCE hInstance, int width, int height, const wchar_t* title);
-    void Cleanup();
-    HWND GetHWND() const { return hwnd; }
-    static LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam);
+    Window(int width, int height, const wchar_t* title);
+    ~Window();
+    bool Initialize();
+    HWND GetHandle() const { return hwnd; }
 
 private:
-    HWND hwnd = nullptr;
+    HWND hwnd;
+    int width, height;
 };
-#endif

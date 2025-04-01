@@ -1,58 +1,30 @@
 #include "FollowCamera.h"
-using namespace DirectX;
 
-FollowCamera::FollowCamera(XMFLOAT3 offset, XMFLOAT3 targetOffset) : offset(offset) {
-    position = XMFLOAT3(0, 0, 0);
-    target = XMFLOAT3(0, 0, 0);
-    viewMatrix = XMMatrixIdentity();
-    projMatrix = XMMatrixPerspectiveFovLH(XM_PIDIV4, 800.0f / 600.0f, 0.1f, 1000.0f);
-
-    // Вычисляем базовое расстояние как длину вектора offset
-    baseDistance = XMVectorGetX(XMVector3Length(XMLoadFloat3(&offset)));
+FollowCamera::FollowCamera(DirectX::XMFLOAT3 position, DirectX::XMFLOAT3 target)
+    : m_position(position), m_target(target) {
 }
 
-void FollowCamera::Update(const XMFLOAT3& targetPosition, float attachedCount) {
-    target = targetPosition;
-    XMVECTOR targetVec = XMLoadFloat3(&target);
-
-    // Вычисляем новое расстояние на основе количества прикреплённых объектов
-    float distance = baseDistance + attachedCount * 0.5f; // Коэффициент 0.5 можно настроить
-
-    // Нормализуем offset и масштабируем его на новое расстояние
-    XMVECTOR offsetVec = XMLoadFloat3(&offset);
-    offsetVec = XMVector3Normalize(offsetVec); // Единичный вектор направления
-    offsetVec = XMVectorScale(offsetVec, distance); // Увеличиваем длину
-
-    // Применяем поворот к смещению камеры
-    XMMATRIX rotation = XMMatrixRotationY(yaw);
-    offsetVec = XMVector3Transform(offsetVec, rotation);
-
-    // Вычисляем новую позицию камеры
-    XMVECTOR newPos = targetVec + offsetVec;
-    XMStoreFloat3(&position, newPos);
-
-    // Обновляем матрицу вида
-    viewMatrix = XMMatrixLookAtLH(newPos, targetVec, XMVectorSet(0, 1, 0, 0));
+DirectX::XMMATRIX FollowCamera::GetViewMatrix() {
+    DirectX::XMVECTOR pos = DirectX::XMVectorSet(m_position.x, m_position.y, m_position.z, 0.0f);
+    DirectX::XMVECTOR target = DirectX::XMVectorSet(m_target.x, m_target.y, m_target.z, 0.0f);
+    DirectX::XMVECTOR up = DirectX::XMVectorSet(0.0f, 1.0f, 0.0f, 0.0f);
+    return DirectX::XMMatrixLookAtLH(pos, target, up);
 }
 
-void FollowCamera::Rotate(float angle) {
-    yaw += angle;
-    if (yaw > XM_2PI) yaw -= XM_2PI;
-    if (yaw < -XM_2PI) yaw += XM_2PI;
+DirectX::XMMATRIX FollowCamera::GetProjMatrix() {
+    return DirectX::XMMatrixPerspectiveFovLH(DirectX::XM_PIDIV4, m_aspectRatio, 0.1f, 1000.0f);
 }
 
-XMVECTOR FollowCamera::GetForward() const {
-    XMVECTOR pos = XMLoadFloat3(&position);
-    XMVECTOR targ = XMLoadFloat3(&target);
-    XMVECTOR forward = XMVectorSubtract(targ, pos);
-    forward = XMVector3Normalize(forward);
-    forward = XMVectorSetY(forward, 0); // Проекция на плоскость XZ
-    return XMVector3Normalize(forward);
+DirectX::XMMATRIX FollowCamera::GetViewProjMatrix() {
+    return GetViewMatrix() * GetProjMatrix();
 }
 
-XMVECTOR FollowCamera::GetRight() const {
-    XMVECTOR forward = GetForward();
-    XMVECTOR up = XMVectorSet(0, 1, 0, 0);
-    XMVECTOR right = XMVector3Cross(up, forward);
-    return XMVector3Normalize(right);
+void FollowCamera::SetAspectRatio(float aspect) {
+    m_aspectRatio = aspect;
+}
+
+void FollowCamera::Update(DirectX::XMFLOAT3 target, float size) {
+    m_target = target;
+    float distance = 10.0f + size * 2.0f; // Увеличиваем расстояние в зависимости от размера катамари
+    m_position = DirectX::XMFLOAT3(target.x, target.y + 5.0f, target.z - distance);
 }

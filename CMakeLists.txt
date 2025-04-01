@@ -2,43 +2,58 @@ cmake_minimum_required(VERSION 3.20)
 project(CG_Lab1)
 
 set(CMAKE_CXX_STANDARD 17)
-include_directories(.)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-# DirectXTK и DirectXMath
-include_directories("C:/Users/Stalker/Desktop/Новая папка (2)/DirectXTK/Inc")
-include_directories("C:/Users/Stalker/Desktop/Новая папка (2)/DirectXMath/Inc")
+# Проверяем архитектуру
+if(CMAKE_SIZEOF_VOID_P EQUAL 8)
+    message(STATUS "Building for 64-bit architecture")
+else()
+    message(FATAL_ERROR "This project requires a 64-bit architecture. Please use a 64-bit MinGW.")
+endif()
 
-add_definitions(-DUNICODE)
-add_definitions(-D_UNICODE)
+# Находим OpenMP
+find_package(OpenMP REQUIRED)
 
+# Находим остальные библиотеки
+find_package(DirectXTex CONFIG REQUIRED)
+find_package(DirectXMath CONFIG REQUIRED)
+find_package(assimp CONFIG REQUIRED)
+
+# Добавляем определения для Unicode
+add_definitions(-DUNICODE -D_UNICODE)
+
+# Создаём исполняемый файл
 add_executable(CG_Lab1
-        Window.cpp
-        Window.h
-        Render.cpp
-        Render.h
-        main.cpp
-        CelestialBody.cpp
-        CelestialBody.h
-        Camera.cpp
-        Camera.h
-        FollowCamera.cpp
-        FollowCamera.h
-        Grid.cpp
-        Grid.h
+        Window.cpp Window.h Render.cpp Render.h main.cpp CelestialBody.cpp CelestialBody.h
+        FollowCamera.cpp FollowCamera.h Grid.cpp Grid.h ModelLoader.cpp ModelLoader.h
+        Logger.cpp Logger.h
+        Ground.cpp Ground.h
 )
 
-file(COPY ${CMAKE_CURRENT_SOURCE_DIR}/Shaders DESTINATION ${CMAKE_CURRENT_BINARY_DIR})
+# Линкуем OpenMP, если он найден
+if(OpenMP_CXX_FOUND)
+    target_compile_options(CG_Lab1 PRIVATE ${OpenMP_CXX_FLAGS})
+    target_link_libraries(CG_Lab1 PRIVATE OpenMP::OpenMP_CXX)
+    target_link_options(CG_Lab1 PRIVATE ${OpenMP_CXX_FLAGS})
+endif()
 
-# Линковка необходимых библиотек
-set(LIBS
-        gdi32
+# Линкуем остальные библиотеки
+target_link_libraries(CG_Lab1 PRIVATE
+        Microsoft::DirectXTex
+        Microsoft::DirectXMath
         d3d11
         d3dcompiler
-        dxguid
-        dinput8   # Для DirectInput
-        d2d1      # Для Direct2D
-        dwrite
-        shlwapi# Для DirectWrite
+        assimp::assimp
 )
 
-target_link_libraries(CG_Lab1 PRIVATE ${LIBS})
+# Копируем текстуры в директорию сборки
+file(COPY ${CMAKE_CURRENT_SOURCE_DIR}/Textures/ DESTINATION ${CMAKE_CURRENT_BINARY_DIR}/Textures
+        FILES_MATCHING
+        PATTERN "*.obj"
+        PATTERN "*.mtl"
+        PATTERN "*.png"
+        PATTERN "*.tif"
+)
+
+# Копируем шейдер в директорию сборки
+file(COPY ${CMAKE_CURRENT_SOURCE_DIR}/shader.hlsl DESTINATION ${CMAKE_CURRENT_BINARY_DIR})

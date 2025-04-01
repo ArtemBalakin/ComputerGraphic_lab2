@@ -1,28 +1,17 @@
-#ifndef FOLLOWCAMERA_H
-#define FOLLOWCAMERA_H
-
+#pragma once
 #include <DirectXMath.h>
 
 class FollowCamera {
 public:
-    FollowCamera(DirectX::XMFLOAT3 offset, DirectX::XMFLOAT3 targetOffset);
-    void Update(const DirectX::XMFLOAT3& targetPosition, float attachedCount);
-    void Rotate(float angle);
-    DirectX::XMVECTOR GetForward() const;
-    DirectX::XMVECTOR GetRight() const;
-
-    DirectX::XMMATRIX GetViewMatrix() const { return viewMatrix; }
-    DirectX::XMMATRIX GetProjectionMatrix() const { return projMatrix; }
-    DirectX::XMMATRIX GetViewProjection() const { return viewMatrix * projMatrix; }
+    FollowCamera(DirectX::XMFLOAT3 position, DirectX::XMFLOAT3 target);
+    DirectX::XMMATRIX GetViewMatrix();
+    DirectX::XMMATRIX GetProjMatrix();
+    DirectX::XMMATRIX GetViewProjMatrix();
+    void SetAspectRatio(float aspect);
+    void Update(DirectX::XMFLOAT3 target, float size);
 
 private:
-    DirectX::XMFLOAT3 position;
-    DirectX::XMFLOAT3 target;
-    DirectX::XMFLOAT3 offset;
-    float yaw = 0.0f;
-    float baseDistance;
-    DirectX::XMMATRIX viewMatrix;
-    DirectX::XMMATRIX projMatrix;
+    DirectX::XMFLOAT3 m_position;
+    DirectX::XMFLOAT3 m_target;
+    float m_aspectRatio = 1.333f; // 800/600 по умолчанию
 };
-
-#endif

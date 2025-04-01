@@ -1,44 +1,33 @@
-#ifndef RENDER_H
-#define RENDER_H
+#pragma once
 #include <d3d11.h>
 #include <vector>
+#include <memory>
 #include "CelestialBody.h"
-#include "FollowCamera.h"
-#include "Grid.h"
-
-struct ConstantBuffer {
-    DirectX::XMFLOAT4X4 world;
-    DirectX::XMFLOAT4X4 viewProj;
-    DirectX::XMFLOAT3 objectColor;
-    float padding; // Для выравнивания
-};
+#include "Ground.h"
+#include <DirectXMath.h>
 
 class Render {
 public:
-    bool Initialize(HWND hwnd, int width, int height);
-    void RenderScene(FollowCamera* camera, const std::vector<std::unique_ptr<CelestialBody>>& bodies, Grid* grid);
-    void Cleanup();
+    Render(HWND hwnd);
+    ~Render();
+    bool Initialize();
+    void RenderScene(const std::vector<std::unique_ptr<CelestialBody>>& bodies, const Ground* ground, DirectX::XMMATRIX viewProj);
+    ID3D11Device* GetDevice() { return device; }
+    ID3D11DeviceContext* GetContext() { return context; }
 
 private:
-    bool CreateDeviceAndSwapChain(HWND hwnd, int width, int height);
-    bool CreateRenderTargetAndDepthStencil(int width, int height);
-    bool CreateShadersAndInputLayout();
-    bool CreateBuffers();
-public:
-    ID3D11Device* device = nullptr;
-    ID3D11DeviceContext* deviceContext = nullptr;
-    IDXGISwapChain* swapChain = nullptr;
-    ID3D11RenderTargetView* renderTargetView = nullptr;
-    ID3D11DepthStencilView* depthStencilView = nullptr;
-    ID3D11VertexShader* vertexShader = nullptr;
-    ID3D11PixelShader* pixelShader = nullptr;
-    ID3D11InputLayout* inputLayout = nullptr;
-    ID3D11Buffer* vertexBufferKatamari = nullptr;
-    ID3D11Buffer* indexBufferKatamari = nullptr;
-    UINT indexCountKatamari = 0;
-    ID3D11Buffer* vertexBufferObject = nullptr;
-    ID3D11Buffer* indexBufferObject = nullptr;
-    UINT indexCountObject = 0;
-    ID3D11Buffer* constantBuffer = nullptr;
+    HWND hwnd;
+    ID3D11Device* device;
+    ID3D11DeviceContext* context;
+    IDXGISwapChain* swapChain;
+    ID3D11RenderTargetView* renderTargetView;
+    ID3D11DepthStencilView* depthStencilView;
+    ID3D11DepthStencilState* depthStencilState;
+    ID3D11Texture2D* depthStencilBuffer;
+    ID3D11VertexShader* vertexShader;
+    ID3D11PixelShader* pixelShaderTextured;
+    ID3D11PixelShader* pixelShaderColored;
+    ID3D11InputLayout* inputLayout;
+    ID3D11Buffer* constantBuffer;
+    ID3D11SamplerState* samplerState;
 };
-#endif

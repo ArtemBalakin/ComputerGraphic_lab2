@@ -1,61 +1,214 @@
 #include "CelestialBody.h"
+#include <memory>
+#include "ModelLoader.h"
+#include "Logger.h"
+#include <DirectXTex.h>
 
-CelestialBody::CelestialBody(float x, float y, float z, float s, DirectX::XMFLOAT4 c)
-    : position{x, y, z}, scale(s), color(c), parent(nullptr) {
+CelestialBody::CelestialBody(ID3D11Device* device, const std::string& modelPath, DirectX::XMFLOAT3 pos, DirectX::XMFLOAT4 col, float rad, bool useTex)
+    : position(pos), color(col), radius(rad), useTexture(useTex),
+      vertexBuffer(nullptr), indexBuffer(nullptr), textureSRV(nullptr), parent(nullptr) {
+    logger << "[CelestialBody] Начало создания объекта" << std::endl;
+    logger << "[CelestialBody] Проверка пути к модели: " << modelPath << std::endl;
+
     rotation = {0.0f, 0.0f, 0.0f, 1.0f}; // Единичный кватернион
     relativeTransform = DirectX::XMMatrixIdentity(); // Единичная матрица
+
+    modelLoader = std::make_unique<ModelLoader>();
+    if (!modelPath.empty() && modelLoader->LoadModel(modelPath)) {
+        logger << "[CelestialBody] Модель успешно загружена: " << modelPath << std::endl;
+        vertices = modelLoader->GetVertices();
+        indices = modelLoader->GetIndices();
+        std::string texPath = modelLoader->GetTexturePath();
+        logger << "[CelestialBody] Путь к текстуре из модели: " << texPath << std::endl;
+
+        if (!texPath.empty() && useTexture) {
+            std::string fullTexPath = "Textures/" + texPath;
+            logger << "[CelestialBody] Попытка загрузить текстуру: " << fullTexPath << std::endl;
+            LoadTexture(device, fullTexPath);
+            if (textureSRV) {
+                logger << "[CelestialBody] Текстура успешно загружена: " << fullTexPath << std::endl;
+            } else {
+                logger << "[CelestialBody] Ошибка: текстура не загружена: " << fullTexPath << std::endl;
+            }
+        }
+    } else {
+        logger << "[CelestialBody] Ошибка: не удалось загрузить модель" << std::endl;
+    }
+
+    logger << "[CelestialBody] Инициализация буферов" << std::endl;
+    InitializeBuffers(device);
+    logger << "[CelestialBody] Объект успешно создан" << std::endl;
 }
 
-const CelestialBody* CelestialBody::CheckCollision(const CelestialBody* other, DirectX::XMVECTOR& attachmentPoint) const {
-    DirectX::XMVECTOR thisPos = DirectX::XMLoadFloat3(&position);
-    DirectX::XMVECTOR otherPos = DirectX::XMLoadFloat3(&other->position);
-    DirectX::XMVECTOR diff = DirectX::XMVectorSubtract(otherPos, thisPos);
-    float distanceSq = DirectX::XMVectorGetX(DirectX::XMVector3LengthSq(diff));
-    float collisionDist = scale + other->scale;
+CelestialBody::~CelestialBody() {
+    if (vertexBuffer) vertexBuffer->Release();
+    if (indexBuffer) indexBuffer->Release();
+    if (textureSRV) textureSRV->Release();
+    logger << "[CelestialBody] Объект уничтожен" << std::endl;
+}
 
-    if (distanceSq < collisionDist * collisionDist) {
-        DirectX::XMVECTOR direction = DirectX::XMVector3Normalize(diff);
-        attachmentPoint = DirectX::XMVectorAdd(thisPos, DirectX::XMVectorScale(direction, scale));
-        return this;
+void CelestialBody::InitializeBuffers(ID3D11Device* device) {
+    logger << "[CelestialBody] Начало инициализации буферов" << std::endl;
+
+    D3D11_BUFFER_DESC vbDesc = {};
+    vbDesc.Usage = D3D11_USAGE_DEFAULT;
+    vbDesc.ByteWidth = static_cast<UINT>(vertices.size() * sizeof(float));
+    vbDesc.BindFlags = D3D11_BIND_VERTEX_BUFFER;
+    vbDesc.CPUAccessFlags = 0;
+
+    D3D11_SUBRESOURCE_DATA vbData = {};
+    vbData.pSysMem = vertices.data();
+
+    HRESULT hr = device->CreateBuffer(&vbDesc, &vbData, &vertexBuffer);
+    if (FAILED(hr)) {
+        logger << "[CelestialBody] Ошибка: не удалось создать вершинный буфер" << std::endl;
+    } else {
+        logger << "[CelestialBody] Вершинный буфер успешно создан" << std::endl;
     }
 
-    for (const auto* attached : attachedObjects) {
-        const CelestialBody* collided = attached->CheckCollision(other, attachmentPoint);
-        if (collided) {
-            return collided;
+    D3D11_BUFFER_DESC ibDesc = {};
+    ibDesc.Usage = D3D11_USAGE_DEFAULT;
+    ibDesc.ByteWidth = static_cast<UINT>(indices.size() * sizeof(unsigned int));
+    ibDesc.BindFlags = D3D11_BIND_INDEX_BUFFER;
+    ibDesc.CPUAccessFlags = 0;
+
+    D3D11_SUBRESOURCE_DATA ibData = {};
+    ibData.pSysMem = indices.data();
+
+    hr = device->CreateBuffer(&ibDesc, &ibData, &indexBuffer);
+    if (FAILED(hr)) {
+        logger << "[CelestialBody] Ошибка: не удалось создать индексный буфер" << std::endl;
+    } else {
+        logger << "[CelestialBody] Индексный буфер успешно создан" << std::endl;
+    }
+
+    logger << "[CelestialBody] Буферы успешно инициализированы" << std::endl;
+}
+
+void CelestialBody::LoadTexture(ID3D11Device* device, const std::string& texturePath) {
+    logger << "[CelestialBody] Начало загрузки текстуры: " << texturePath << std::endl;
+    std::wstring wTexPath(texturePath.begin(), texturePath.end());
+    DirectX::ScratchImage image;
+    HRESULT hr = DirectX::LoadFromWICFile(wTexPath.c_str(), DirectX::WIC_FLAGS_NONE, nullptr, image);
+
+    if (FAILED(hr)) {
+        logger << "[CelestialBody] Ошибка: не удалось загрузить текстуру из файла: " << texturePath << std::endl;
+        return;
+    }
+
+    logger << "[CelestialBody] Текстура из файла загружена, создание ресурса" << std::endl;
+    ID3D11Texture2D* texture;
+    hr = DirectX::CreateTexture(device, image.GetImages(), image.GetImageCount(), image.GetMetadata(), (ID3D11Resource**)&texture);
+
+    if (SUCCEEDED(hr)) {
+        logger << "[CelestialBody] Ресурс текстуры создан, создание SRV" << std::endl;
+        hr = device->CreateShaderResourceView(texture, nullptr, &textureSRV);
+        texture->Release();
+        if (SUCCEEDED(hr)) {
+            logger << "[CelestialBody] SRV для текстуры успешно создан: " << texturePath << std::endl;
+        } else {
+            logger << "[CelestialBody] Ошибка: не удалось создать SRV для текстуры: " << texturePath << std::endl;
         }
+    } else {
+        logger << "[CelestialBody] Ошибка: не удалось создать ресурс текстуры: " << texturePath << std::endl;
     }
-    return nullptr;
+}
+
+void CelestialBody::Draw(ID3D11DeviceContext* context, ID3D11Buffer* constantBuffer, DirectX::XMMATRIX viewProj) const {
+    logger << "[CelestialBody] Начало рендеринга" << std::endl;
+
+    DirectX::XMMATRIX world = GetWorldMatrix();
+    DirectX::XMMATRIX worldViewProj = world * viewProj;
+
+    struct ConstantBufferData {
+        DirectX::XMMATRIX worldViewProj;
+        DirectX::XMFLOAT4 color;
+        BOOL useTexture;
+    } cbData;
+    cbData.worldViewProj = DirectX::XMMatrixTranspose(worldViewProj);
+    cbData.color = color;
+    cbData.useTexture = textureSRV != nullptr && useTexture;
+
+    context->UpdateSubresource(constantBuffer, 0, nullptr, &cbData, 0, 0);
+    logger << "[CelestialBody] Константный буфер обновлен" << std::endl;
+
+    if (cbData.useTexture && textureSRV) {
+        logger << "[CelestialBody] Рендеринг с текстурой" << std::endl;
+        context->PSSetShaderResources(0, 1, &textureSRV);
+    } else {
+        logger << "[CelestialBody] Рендеринг с цветом" << std::endl;
+    }
+
+    UINT stride = 8 * sizeof(float);
+    UINT offset = 0;
+    context->IASetVertexBuffers(0, 1, &vertexBuffer, &stride, &offset);
+    logger << "[CelestialBody] Вершинный буфер установлен" << std::endl;
+
+    context->IASetIndexBuffer(indexBuffer, DXGI_FORMAT_R32_UINT, 0);
+    logger << "[CelestialBody] Индексный буфер установлен" << std::endl;
+
+    context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+    context->DrawIndexed(static_cast<UINT>(indices.size()), 0, 0);
+    logger << "[CelestialBody] Выполнен вызов DrawIndexed, индексов: " << indices.size() << std::endl;
+
+    // Рендеринг дочерних объектов
+    for (const auto* child : children) {
+        child->Draw(context, constantBuffer, viewProj);
+    }
+
+    logger << "[CelestialBody] Рендеринг завершен" << std::endl;
+}
+
+void CelestialBody::UpdatePosition(DirectX::XMVECTOR velocity, float deltaTime) {
+    DirectX::XMVECTOR pos = DirectX::XMLoadFloat3(&position);
+    pos = DirectX::XMVectorAdd(pos, DirectX::XMVectorScale(velocity, deltaTime));
+    DirectX::XMStoreFloat3(&position, pos);
 }
 
 void CelestialBody::Update() {
     if (parent) {
-        // Получаем мировую матрицу родителя
         DirectX::XMMATRIX parentWorld = parent->GetWorldMatrix();
-        // Вычисляем мировую матрицу объекта
-        DirectX::XMMATRIX worldMatrix = relativeTransform * parentWorld;
-
-        // Извлекаем позицию из мировой матрицы
-        DirectX::XMVECTOR scaleVec, rotQuat, transVec;
-        DirectX::XMMatrixDecompose(&scaleVec, &rotQuat, &transVec, worldMatrix);
-        DirectX::XMStoreFloat3(&position, transVec);
+        DirectX::XMMATRIX world = relativeTransform * parentWorld;
+        DirectX::XMVECTOR pos, rot, scale;
+        DirectX::XMMatrixDecompose(&scale, &rot, &pos, world);
+        DirectX::XMStoreFloat3(&position, pos);
+        DirectX::XMStoreFloat4(&rotation, rot);
     }
-
-    // Рекурсивно обновляем все прикрепленные объекты
-    for (auto* attached : attachedObjects) {
-        attached->Update();
+    for (auto* child : children) {
+        child->Update();
     }
 }
 
 DirectX::XMMATRIX CelestialBody::GetWorldMatrix() const {
-    if (parent) {
-        // Для прикрепленных объектов: relativeTransform * родительская мировая матрица
-        return relativeTransform * parent->GetWorldMatrix();
-    } else {
-        // Для катамари: масштаб, вращение и трансляция
-        DirectX::XMMATRIX scaleMatrix = DirectX::XMMatrixScaling(scale, scale, scale);
-        DirectX::XMMATRIX rotationMatrix = DirectX::XMMatrixRotationQuaternion(DirectX::XMLoadFloat4(&rotation));
-        DirectX::XMMATRIX translationMatrix = DirectX::XMMatrixTranslation(position.x, position.y, position.z);
-        return scaleMatrix * rotationMatrix * translationMatrix;
+    DirectX::XMMATRIX scale = DirectX::XMMatrixScaling(radius, radius, radius);
+    DirectX::XMMATRIX rotationMatrix = DirectX::XMMatrixRotationQuaternion(DirectX::XMLoadFloat4(&rotation));
+    DirectX::XMMATRIX translation = DirectX::XMMatrixTranslation(position.x, position.y, position.z);
+    return scale * rotationMatrix * translation;
+}
+
+const CelestialBody* CelestialBody::CheckCollision(const CelestialBody* other, DirectX::XMVECTOR& attachmentPoint) const {
+    if (other == this || other->parent) return nullptr;
+
+    DirectX::XMVECTOR thisPos = DirectX::XMLoadFloat3(&position);
+    DirectX::XMVECTOR otherPos = DirectX::XMLoadFloat3(&other->position);
+    float distance = DirectX::XMVectorGetX(DirectX::XMVector3Length(DirectX::XMVectorSubtract(thisPos, otherPos)));
+    float collisionDistance = radius + other->radius;
+
+    if (distance < collisionDistance) {
+        DirectX::XMVECTOR direction = DirectX::XMVector3Normalize(DirectX::XMVectorSubtract(otherPos, thisPos));
+        attachmentPoint = DirectX::XMVectorAdd(thisPos, DirectX::XMVectorScale(direction, radius));
+        return other;
     }
+    return nullptr;
+}
+
+void CelestialBody::AttachChild(CelestialBody* child) {
+    if (child == this || child->parent) return;
+
+    child->parent = this;
+    DirectX::XMVECTOR childPos = DirectX::XMLoadFloat3(&child->position);
+    DirectX::XMVECTOR thisPos = DirectX::XMLoadFloat3(&position);
+    DirectX::XMVECTOR relativePos = DirectX::XMVectorSubtract(childPos, thisPos);
+    child->relativeTransform = DirectX::XMMatrixTranslationFromVector(relativePos);
+    children.push_back(child);
 }
