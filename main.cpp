@@ -24,7 +24,8 @@ int main() {
         return -1;
     }
 
-    std::unique_ptr<Ground> ground = std::make_unique<Ground>(render.GetDevice(), "Textures/plane.obj");
+    // Используем ground.obj вместо plane.obj
+    std::unique_ptr<Ground> ground = std::make_unique<Ground>(render.GetDevice(), "Textures/ground.obj");
 
     std::vector<std::unique_ptr<CelestialBody>> bodies;
     bodies.push_back(std::make_unique<CelestialBody>(
