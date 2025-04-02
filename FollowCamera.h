@@ -9,9 +9,10 @@ public:
     DirectX::XMMATRIX GetViewProjMatrix();
     void SetAspectRatio(float aspect);
     void Update(DirectX::XMFLOAT3 target, float size);
+    DirectX::XMFLOAT3 GetPosition() const { return m_position; } // Добавляем геттер
 
 private:
     DirectX::XMFLOAT3 m_position;
     DirectX::XMFLOAT3 m_target;
-    float m_aspectRatio = 1.333f; // 800/600 по умолчанию
+    float m_aspectRatio = 800.0f / 600.0f;
 };

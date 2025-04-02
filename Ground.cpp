@@ -124,7 +124,8 @@ void Ground::LoadTexture(ID3D11Device* device, const std::string& texturePath) {
     }
 }
 
-void Ground::Draw(ID3D11DeviceContext* context, ID3D11Buffer* constantBuffer, DirectX::XMMATRIX viewProj) const {
+void Ground::Draw(ID3D11DeviceContext* context, ID3D11Buffer* constantBuffer, DirectX::XMMATRIX viewProj,
+                  DirectX::XMFLOAT3 cameraPos, float fogStart, float fogEnd, DirectX::XMFLOAT4 fogColor) const {
     logger << "[Ground] Начало рендеринга пола" << std::endl;
 
     DirectX::XMMATRIX world = DirectX::XMMatrixTranslation(position.x, position.y, position.z);
@@ -134,10 +135,36 @@ void Ground::Draw(ID3D11DeviceContext* context, ID3D11Buffer* constantBuffer, Di
         DirectX::XMMATRIX worldViewProj;
         DirectX::XMFLOAT4 color;
         BOOL useTexture;
+        DirectX::XMFLOAT3 lightDir;
+        float padding1;
+        DirectX::XMMATRIX world;
+        DirectX::XMFLOAT3 cameraPos;
+        float fogStart;
+        float fogEnd;
+        DirectX::XMFLOAT4 fogColor;
+        DirectX::XMFLOAT3 lightPos;        // Позиция источника света
+        DirectX::XMFLOAT3 lightColor;      // Цвет света
+        DirectX::XMFLOAT3 materialDiffuse; // Diffuse цвет материала
+        DirectX::XMFLOAT3 materialSpecular;// Specular цвет материала
+        float shininess;                   // Коэффициент блеска
+        float padding2[3];                 // Выравнивание до кратности 16 байт
     } cbData;
+
     cbData.worldViewProj = DirectX::XMMatrixTranspose(worldViewProj);
     cbData.color = color;
     cbData.useTexture = textureSRV != nullptr;
+    cbData.lightDir = DirectX::XMFLOAT3(0.0f, -1.0f, 0.0f); // Для обратной совместимости, можно убрать
+    cbData.padding1 = 0.0f;
+    cbData.world = DirectX::XMMatrixTranspose(world);
+    cbData.cameraPos = cameraPos;
+    cbData.fogStart = fogStart;
+    cbData.fogEnd = fogEnd;
+    cbData.fogColor = fogColor;
+    cbData.lightPos = DirectX::XMFLOAT3(0.0f, 10.0f, 0.0f);       // Свет сверху
+    cbData.lightColor = DirectX::XMFLOAT3(1.0f, 1.0f, 1.0f);      // Белый свет
+    cbData.materialDiffuse = DirectX::XMFLOAT3(0.8f, 0.8f, 0.8f); // Diffuse материал
+    cbData.materialSpecular = DirectX::XMFLOAT3(1.0f, 1.0f, 1.0f); // Specular материал
+    cbData.shininess = 32.0f;                                      // Блеск
 
     context->UpdateSubresource(constantBuffer, 0, nullptr, &cbData, 0, 0);
     logger << "[Ground] Константный буфер обновлен" << std::endl;

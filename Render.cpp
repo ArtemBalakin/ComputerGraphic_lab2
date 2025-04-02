@@ -1,6 +1,8 @@
 #include "Render.h"
 #include "Logger.h"
 #include <d3dcompiler.h>
+#include "CelestialBody.h"
+#include "Ground.h"
 
 Render::Render(HWND hwnd) : hwnd(hwnd), device(nullptr), context(nullptr), swapChain(nullptr),
     renderTargetView(nullptr), depthStencilView(nullptr), depthStencilState(nullptr), depthStencilBuffer(nullptr),
@@ -183,6 +185,20 @@ bool Render::Initialize() {
         DirectX::XMMATRIX worldViewProj;
         DirectX::XMFLOAT4 color;
         BOOL useTexture;
+        DirectX::XMFLOAT3 lightDir;
+        float padding1;
+        DirectX::XMMATRIX world;
+        DirectX::XMFLOAT3 cameraPos;
+        float fogStart;
+        float fogEnd;
+        DirectX::XMFLOAT4 fogColor;
+        DirectX::XMFLOAT3 lightPos;
+        DirectX::XMFLOAT3 lightColor;
+        DirectX::XMFLOAT3 materialDiffuse;
+        DirectX::XMFLOAT3 materialSpecular;
+        float shininess;
+        DirectX::XMFLOAT3 emissiveColor; // Подсветка
+        float padding2;
     };
     D3D11_BUFFER_DESC cbDesc = {};
     cbDesc.Usage = D3D11_USAGE_DEFAULT;
@@ -221,7 +237,9 @@ bool Render::Initialize() {
     return true;
 }
 
-void Render::RenderScene(const std::vector<std::unique_ptr<CelestialBody>>& bodies, const Ground* ground, DirectX::XMMATRIX viewProj) {
+void Render::RenderScene(const std::vector<std::unique_ptr<CelestialBody>>& bodies, const Ground* ground,
+                        DirectX::XMMATRIX viewProj, DirectX::XMFLOAT3 cameraPos, float fogStart,
+                        float fogEnd, DirectX::XMFLOAT4 fogColor) {
     logger << "[Render] Начало рендеринга сцены" << std::endl;
 
     if (!context || !ground || !constantBuffer) {
@@ -242,13 +260,13 @@ void Render::RenderScene(const std::vector<std::unique_ptr<CelestialBody>>& bodi
         context->PSSetShader(pixelShaderColored, nullptr, 0);
     }
     logger << "[Render] Вызов Draw для ground" << std::endl;
-    ground->Draw(context, constantBuffer, viewProj);
+    ground->Draw(context, constantBuffer, viewProj, cameraPos, fogStart, fogEnd, fogColor);
 
     context->PSSetShader(pixelShaderTextured, nullptr, 0);
     logger << "[Render] Установлен текстурный шейдер для тел" << std::endl;
     for (const auto& body : bodies) {
         logger << "[Render] Рендеринг тела" << std::endl;
-        body->Draw(context, constantBuffer, viewProj);
+        body->Draw(context, constantBuffer, viewProj, cameraPos, fogStart, fogEnd, fogColor);
     }
 
     swapChain->Present(1, 0);

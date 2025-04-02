@@ -4,14 +4,15 @@
 #include "Logger.h"
 #include <DirectXTex.h>
 
-CelestialBody::CelestialBody(ID3D11Device* device, const std::string& modelPath, DirectX::XMFLOAT3 pos, DirectX::XMFLOAT4 col, float rad, bool useTex)
-    : position(pos), color(col), radius(rad), useTexture(useTex),
+CelestialBody::CelestialBody(ID3D11Device* device, const std::string& modelPath, DirectX::XMFLOAT3 pos,
+                             DirectX::XMFLOAT4 col, float rad, bool useTex, DirectX::XMFLOAT3 emissiveCol)
+    : position(pos), color(col), radius(rad), useTexture(useTex), emissiveColor(emissiveCol),
       vertexBuffer(nullptr), indexBuffer(nullptr), textureSRV(nullptr), parent(nullptr) {
     logger << "[CelestialBody] Начало создания объекта" << std::endl;
     logger << "[CelestialBody] Проверка пути к модели: " << modelPath << std::endl;
 
-    rotation = {0.0f, 0.0f, 0.0f, 1.0f}; // Единичный кватернион
-    relativeTransform = DirectX::XMMatrixIdentity(); // Единичная матрица
+    rotation = {0.0f, 0.0f, 0.0f, 1.0f};
+    relativeTransform = DirectX::XMMatrixIdentity();
 
     modelLoader = std::make_unique<ModelLoader>();
     if (!modelPath.empty() && modelLoader->LoadModel(modelPath)) {
@@ -61,7 +62,7 @@ void CelestialBody::InitializeBuffers(ID3D11Device* device) {
 
     HRESULT hr = device->CreateBuffer(&vbDesc, &vbData, &vertexBuffer);
     if (FAILED(hr)) {
-        logger << "[CelestialBody] Ошибка: не удалось создать вершинный буфер" << std::endl;
+        logger << "[CelestialBody] Ошибка W не удалось создать вершинный буфер" << std::endl;
     } else {
         logger << "[CelestialBody] Вершинный буфер успешно создан" << std::endl;
     }
@@ -114,7 +115,8 @@ void CelestialBody::LoadTexture(ID3D11Device* device, const std::string& texture
     }
 }
 
-void CelestialBody::Draw(ID3D11DeviceContext* context, ID3D11Buffer* constantBuffer, DirectX::XMMATRIX viewProj) const {
+void CelestialBody::Draw(ID3D11DeviceContext* context, ID3D11Buffer* constantBuffer, DirectX::XMMATRIX viewProj,
+                        DirectX::XMFLOAT3 cameraPos, float fogStart, float fogEnd, DirectX::XMFLOAT4 fogColor) const {
     logger << "[CelestialBody] Начало рендеринга" << std::endl;
 
     DirectX::XMMATRIX world = GetWorldMatrix();
@@ -124,10 +126,39 @@ void CelestialBody::Draw(ID3D11DeviceContext* context, ID3D11Buffer* constantBuf
         DirectX::XMMATRIX worldViewProj;
         DirectX::XMFLOAT4 color;
         BOOL useTexture;
+        DirectX::XMFLOAT3 lightDir;
+        float padding1;
+        DirectX::XMMATRIX world;
+        DirectX::XMFLOAT3 cameraPos;
+        float fogStart;
+        float fogEnd;
+        DirectX::XMFLOAT4 fogColor;
+        DirectX::XMFLOAT3 lightPos;
+        DirectX::XMFLOAT3 lightColor;
+        DirectX::XMFLOAT3 materialDiffuse;
+        DirectX::XMFLOAT3 materialSpecular;
+        float shininess;
+        DirectX::XMFLOAT3 emissiveColor; // Подсветка
+        float padding2;
     } cbData;
+
     cbData.worldViewProj = DirectX::XMMatrixTranspose(worldViewProj);
     cbData.color = color;
     cbData.useTexture = textureSRV != nullptr && useTexture;
+    cbData.lightDir = DirectX::XMFLOAT3(0.0f, -1.0f, 0.0f); // Старое направление света
+    cbData.padding1 = 0.0f;
+    cbData.world = DirectX::XMMatrixTranspose(world);
+    cbData.cameraPos = cameraPos;
+    cbData.fogStart = fogStart;
+    cbData.fogEnd = fogEnd;
+    cbData.fogColor = fogColor;
+    cbData.lightPos = DirectX::XMFLOAT3(0.0f, 10.0f, 0.0f);       // Свет сверху
+    cbData.lightColor = DirectX::XMFLOAT3(2.0f, 2.0f, 2.0f);      // Яркий белый свет
+    cbData.materialDiffuse = DirectX::XMFLOAT3(1.0f, 1.0f, 1.0f); // Полное отражение
+    cbData.materialSpecular = DirectX::XMFLOAT3(0.5f, 0.5f, 0.5f); // Блики
+    cbData.shininess = 64.0f;                                      // Глянцевость
+    cbData.emissiveColor = emissiveColor;                          // Подсветка объекта
+    cbData.padding2 = 0.0f;
 
     context->UpdateSubresource(constantBuffer, 0, nullptr, &cbData, 0, 0);
     logger << "[CelestialBody] Константный буфер обновлен" << std::endl;
@@ -151,9 +182,8 @@ void CelestialBody::Draw(ID3D11DeviceContext* context, ID3D11Buffer* constantBuf
     context->DrawIndexed(static_cast<UINT>(indices.size()), 0, 0);
     logger << "[CelestialBody] Выполнен вызов DrawIndexed, индексов: " << indices.size() << std::endl;
 
-    // Рендеринг дочерних объектов
     for (const auto* child : children) {
-        child->Draw(context, constantBuffer, viewProj);
+        child->Draw(context, constantBuffer, viewProj, cameraPos, fogStart, fogEnd, fogColor);
     }
 
     logger << "[CelestialBody] Рендеринг завершен" << std::endl;
