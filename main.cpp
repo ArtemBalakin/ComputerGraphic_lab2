@@ -35,7 +35,7 @@ int main() {
         DirectX::XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f),
         1.0f,
         true,
-        DirectX::XMFLOAT3(0.2f, 0.2f, 0.2f) // Легкое белое свечение
+        DirectX::XMFLOAT3(0.5f, 0.5f, 0.5f) // Увеличиваем свечение
     ));
 
     // Дополнительные мячи для налипания
@@ -46,7 +46,7 @@ int main() {
         DirectX::XMFLOAT4(1.0f, 0.0f, 0.0f, 1.0f),
         0.5f,
         true,
-        DirectX::XMFLOAT3(0.3f, 0.0f, 0.0f) // Красное свечение
+        DirectX::XMFLOAT3(0.8f, 0.0f, 0.0f) // Красное свечение
     ));
     bodies.push_back(std::make_unique<CelestialBody>(
         render.GetDevice(),
@@ -55,7 +55,7 @@ int main() {
         DirectX::XMFLOAT4(0.0f, 1.0f, 0.0f, 1.0f),
         0.5f,
         true,
-        DirectX::XMFLOAT3(0.0f, 0.3f, 0.0f) // Зеленое свечение
+        DirectX::XMFLOAT3(0.0f, 0.8f, 0.0f) // Зеленое свечение
     ));
     bodies.push_back(std::make_unique<CelestialBody>(
         render.GetDevice(),
@@ -64,7 +64,7 @@ int main() {
         DirectX::XMFLOAT4(0.0f, 0.0f, 1.0f, 1.0f),
         0.5f,
         true,
-        DirectX::XMFLOAT3(0.0f, 0.0f, 0.3f) // Синее свечение
+        DirectX::XMFLOAT3(0.0f, 0.0f, 0.8f) // Синее свечение
     ));
     bodies.push_back(std::make_unique<CelestialBody>(
         render.GetDevice(),
@@ -73,7 +73,7 @@ int main() {
         DirectX::XMFLOAT4(1.0f, 1.0f, 0.0f, 1.0f),
         0.5f,
         true,
-        DirectX::XMFLOAT3(0.2f, 0.2f, 0.0f) // Желтое свечение
+        DirectX::XMFLOAT3(0.5f, 0.5f, 0.0f) // Желтое свечение
     ));
 
     DirectX::XMFLOAT3 camPos(0.0f, 5.0f, -10.0f);
@@ -135,7 +135,7 @@ int main() {
 
             camera.Update(katamari->GetPosition(), static_cast<float>(katamari->GetChildren().size()));
             DirectX::XMMATRIX viewProj = camera.GetViewProjMatrix();
-            DirectX::XMFLOAT3 cameraPos = camera.GetPosition(); // Теперь метод GetPosition доступен
+            DirectX::XMFLOAT3 cameraPos = camera.GetPosition();
 
             render.RenderScene(bodies, ground.get(), viewProj, cameraPos);
 

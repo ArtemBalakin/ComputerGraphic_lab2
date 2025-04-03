@@ -141,7 +141,7 @@ void CelestialBody::Draw(ID3D11DeviceContext* context, ID3D11Buffer* constantBuf
     cbData.world = DirectX::XMMatrixTranspose(world); // Передаем world матрицу
     cbData.color = color;
     cbData.useTexture = textureSRV != nullptr && useTexture;
-    cbData.lightPos = DirectX::XMFLOAT3(-1.0f, -1.0f, -1.0f);//DirectX::XMFLOAT3(0.0f, 10.0f, 0.0f);       // Свет сверху
+    cbData.lightPos = DirectX::XMFLOAT3(0.0f, -1.0f, -1.0f);//DirectX::XMFLOAT3(-1.0f, -1.0f, -1.0f);//DirectX::XMFLOAT3(0.0f, 10.0f, 0.0f);       // Свет сверху
     cbData.lightColor = DirectX::XMFLOAT3(2.0f, 2.0f, 2.0f);      // Яркий белый свет
     cbData.materialDiffuse = DirectX::XMFLOAT3(1.0f, 1.0f, 1.0f); // Полное диффузное отражение
     cbData.materialSpecular = DirectX::XMFLOAT3(0.5f, 0.5f, 0.5f); // Зеркальные блики

@@ -240,7 +240,7 @@ void Render::RenderScene(const std::vector<std::unique_ptr<CelestialBody>>& bodi
         return;
     }
 
-    float clearColor[] = { 0.0f, 0.0f, 0.0f, 1.0f };
+    float clearColor[] = { 0.53f, 0.81f, 0.92f, 1.0f };
     context->ClearRenderTargetView(renderTargetView, clearColor);
     context->ClearDepthStencilView(depthStencilView, D3D11_CLEAR_DEPTH | D3D11_CLEAR_STENCIL, 1.0f, 0);
     logger << "[Render] Буферы очищены" << std::endl;

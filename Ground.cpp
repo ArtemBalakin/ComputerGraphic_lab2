@@ -151,7 +151,7 @@ void Ground::Draw(ID3D11DeviceContext *context, ID3D11Buffer *constantBuffer, Di
     cbData.world = DirectX::XMMatrixTranspose(world); // Передаем world матрицу
     cbData.color = color;
     cbData.useTexture = textureSRV != nullptr;
-    cbData.lightPos =DirectX::XMFLOAT3(-1.0f, -1.0f, -1.0f);// DirectX::XMFLOAT3(0.0f, 10.0f, 0.0f); // Свет сверху
+    cbData.lightPos =DirectX::XMFLOAT3(0.0f, -1.0f, -1.0f);//DirectX::XMFLOAT3(-1.0f, -1.0f, -1.0f);// DirectX::XMFLOAT3(0.0f, 10.0f, 0.0f); // Свет сверху
     cbData.lightColor = DirectX::XMFLOAT3(1.0f, 1.0f, 1.0f); // Белый свет
     cbData.materialDiffuse = DirectX::XMFLOAT3(0.8f, 0.8f, 0.8f);
     cbData.materialSpecular = DirectX::XMFLOAT3(0.2f, 0.2f, 0.2f); // Меньше бликов для пола
