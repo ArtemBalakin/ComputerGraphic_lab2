@@ -1,11 +1,10 @@
 #pragma once
 #include <d3d11.h>
-#include <DirectXMath.h>
 #include <vector>
-#include <string>
+#include <DirectXMath.h>
 #include <memory>
+
 #include "ModelLoader.h"
-#include "Logger.h"
 
 class Ground {
 public:
@@ -13,7 +12,7 @@ public:
     ~Ground();
 
     void Draw(ID3D11DeviceContext* context, ID3D11Buffer* constantBuffer, DirectX::XMMATRIX viewProj,
-              DirectX::XMFLOAT3 cameraPos, float fogStart, float fogEnd, DirectX::XMFLOAT4 fogColor) const;
+              DirectX::XMFLOAT3 cameraPos) const;
     bool HasTexture() const;
 
 private:
@@ -22,10 +21,10 @@ private:
 
     DirectX::XMFLOAT3 position;
     DirectX::XMFLOAT4 color;
-    std::unique_ptr<ModelLoader> modelLoader;
-    std::vector<float> vertices;
-    std::vector<unsigned int> indices;
     ID3D11Buffer* vertexBuffer;
     ID3D11Buffer* indexBuffer;
     ID3D11ShaderResourceView* textureSRV;
+    std::vector<float> vertices;
+    std::vector<unsigned int> indices;
+    std::unique_ptr<ModelLoader> modelLoader;
 };

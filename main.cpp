@@ -80,10 +80,6 @@ int main() {
     DirectX::XMFLOAT3 target(0.0f, 0.0f, 0.0f);
     FollowCamera camera(camPos, target);
 
-    DirectX::XMFLOAT4 fogColor(0.5f, 0.5f, 0.5f, 1.0f);
-    float fogStart = 10.0f;
-    float fogEnd = 100.0f;
-
     CelestialBody* katamari = bodies[0].get();
     float deltaTime = 1.0f / 60.0f;
     DirectX::XMVECTOR velocity = DirectX::XMVectorSet(0.0f, 0.0f, 0.0f, 0.0f);
@@ -139,9 +135,9 @@ int main() {
 
             camera.Update(katamari->GetPosition(), static_cast<float>(katamari->GetChildren().size()));
             DirectX::XMMATRIX viewProj = camera.GetViewProjMatrix();
-            DirectX::XMFLOAT3 cameraPos = camera.GetPosition();
+            DirectX::XMFLOAT3 cameraPos = camera.GetPosition(); // Теперь метод GetPosition доступен
 
-            render.RenderScene(bodies, ground.get(), viewProj, cameraPos, fogStart, fogEnd, fogColor);
+            render.RenderScene(bodies, ground.get(), viewProj, cameraPos);
 
             if (!(GetAsyncKeyState('W') & 0x8000) && !(GetAsyncKeyState('S') & 0x8000) &&
                 !(GetAsyncKeyState('A') & 0x8000) && !(GetAsyncKeyState('D') & 0x8000)) {

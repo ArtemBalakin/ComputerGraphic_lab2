@@ -3,7 +3,7 @@
 #include "Logger.h"
 #include <DirectXTex.h>
 
-Ground::Ground(ID3D11Device* device, const std::string& modelPath)
+Ground::Ground(ID3D11Device *device, const std::string &modelPath)
     : position(0.0f, 0.0f, 0.0f), color(0.0f, 0.392f, 0.0f, 1.0f),
       vertexBuffer(nullptr), indexBuffer(nullptr), textureSRV(nullptr) {
     logger << "[Ground] Начало создания объекта Ground" << std::endl;
@@ -32,10 +32,10 @@ Ground::Ground(ID3D11Device* device, const std::string& modelPath)
     } else {
         logger << "[Ground] Ошибка: не удалось загрузить модель, используется запасная плоскость" << std::endl;
         float planeVertices[] = {
-            -50.0f, 0.0f, -50.0f,  0.0f, 1.0f, 0.0f,  0.0f, 0.0f,
-             50.0f, 0.0f, -50.0f,  0.0f, 1.0f, 0.0f,  1.0f, 0.0f,
-             50.0f, 0.0f,  50.0f,  0.0f, 1.0f, 0.0f,  1.0f, 1.0f,
-            -50.0f, 0.0f,  50.0f,  0.0f, 1.0f, 0.0f,  0.0f, 1.0f
+            -50.0f, 0.0f, -50.0f, 0.0f, 1.0f, 0.0f, 0.0f, 0.0f,
+            50.0f, 0.0f, -50.0f, 0.0f, 1.0f, 0.0f, 1.0f, 0.0f,
+            50.0f, 0.0f, 50.0f, 0.0f, 1.0f, 0.0f, 1.0f, 1.0f,
+            -50.0f, 0.0f, 50.0f, 0.0f, 1.0f, 0.0f, 0.0f, 1.0f
         };
         unsigned int planeIndices[] = {
             0, 1, 2,
@@ -57,7 +57,7 @@ Ground::~Ground() {
     logger << "[Ground] Объект Ground уничтожен" << std::endl;
 }
 
-void Ground::InitializeBuffers(ID3D11Device* device) {
+void Ground::InitializeBuffers(ID3D11Device *device) {
     logger << "[Ground] Начало инициализации буферов" << std::endl;
 
     D3D11_BUFFER_DESC vbDesc = {};
@@ -95,7 +95,7 @@ void Ground::InitializeBuffers(ID3D11Device* device) {
     logger << "[Ground] Буферы успешно инициализированы" << std::endl;
 }
 
-void Ground::LoadTexture(ID3D11Device* device, const std::string& texturePath) {
+void Ground::LoadTexture(ID3D11Device *device, const std::string &texturePath) {
     logger << "[Ground] Начало загрузки текстуры: " << texturePath << std::endl;
     std::wstring wTexPath(texturePath.begin(), texturePath.end());
     DirectX::ScratchImage image;
@@ -107,8 +107,9 @@ void Ground::LoadTexture(ID3D11Device* device, const std::string& texturePath) {
     }
 
     logger << "[Ground] Текстура из файла загружена, создание ресурса" << std::endl;
-    ID3D11Texture2D* texture;
-    hr = DirectX::CreateTexture(device, image.GetImages(), image.GetImageCount(), image.GetMetadata(), (ID3D11Resource**)&texture);
+    ID3D11Texture2D *texture;
+    hr = DirectX::CreateTexture(device, image.GetImages(), image.GetImageCount(), image.GetMetadata(),
+                                (ID3D11Resource **) &texture);
 
     if (SUCCEEDED(hr)) {
         logger << "[Ground] Ресурс текстуры создан, создание SRV" << std::endl;
@@ -124,8 +125,8 @@ void Ground::LoadTexture(ID3D11Device* device, const std::string& texturePath) {
     }
 }
 
-void Ground::Draw(ID3D11DeviceContext* context, ID3D11Buffer* constantBuffer, DirectX::XMMATRIX viewProj,
-                  DirectX::XMFLOAT3 cameraPos, float fogStart, float fogEnd, DirectX::XMFLOAT4 fogColor) const {
+void Ground::Draw(ID3D11DeviceContext *context, ID3D11Buffer *constantBuffer, DirectX::XMMATRIX viewProj,
+                  DirectX::XMFLOAT3 cameraPos) const {
     logger << "[Ground] Начало рендеринга пола" << std::endl;
 
     DirectX::XMMATRIX world = DirectX::XMMatrixTranslation(position.x, position.y, position.z);
@@ -133,38 +134,31 @@ void Ground::Draw(ID3D11DeviceContext* context, ID3D11Buffer* constantBuffer, Di
 
     struct ConstantBufferData {
         DirectX::XMMATRIX worldViewProj;
+        DirectX::XMMATRIX world; // Добавляем world матрицу
         DirectX::XMFLOAT4 color;
         BOOL useTexture;
-        DirectX::XMFLOAT3 lightDir;
-        float padding1;
-        DirectX::XMMATRIX world;
+        DirectX::XMFLOAT3 lightPos;
+        DirectX::XMFLOAT3 lightColor;
+        DirectX::XMFLOAT3 materialDiffuse;
+        DirectX::XMFLOAT3 materialSpecular;
+        float shininess;
+        DirectX::XMFLOAT3 emissiveColor;
         DirectX::XMFLOAT3 cameraPos;
-        float fogStart;
-        float fogEnd;
-        DirectX::XMFLOAT4 fogColor;
-        DirectX::XMFLOAT3 lightPos;        // Позиция источника света
-        DirectX::XMFLOAT3 lightColor;      // Цвет света
-        DirectX::XMFLOAT3 materialDiffuse; // Diffuse цвет материала
-        DirectX::XMFLOAT3 materialSpecular;// Specular цвет материала
-        float shininess;                   // Коэффициент блеска
-        float padding2[3];                 // Выравнивание до кратности 16 байт
+        float padding;
     } cbData;
 
     cbData.worldViewProj = DirectX::XMMatrixTranspose(worldViewProj);
+    cbData.world = DirectX::XMMatrixTranspose(world); // Передаем world матрицу
     cbData.color = color;
     cbData.useTexture = textureSRV != nullptr;
-    cbData.lightDir = DirectX::XMFLOAT3(0.0f, -1.0f, 0.0f); // Для обратной совместимости, можно убрать
-    cbData.padding1 = 0.0f;
-    cbData.world = DirectX::XMMatrixTranspose(world);
-    cbData.cameraPos = cameraPos;
-    cbData.fogStart = fogStart;
-    cbData.fogEnd = fogEnd;
-    cbData.fogColor = fogColor;
-    cbData.lightPos = DirectX::XMFLOAT3(0.0f, 10.0f, 0.0f);       // Свет сверху
-    cbData.lightColor = DirectX::XMFLOAT3(1.0f, 1.0f, 1.0f);      // Белый свет
-    cbData.materialDiffuse = DirectX::XMFLOAT3(0.8f, 0.8f, 0.8f); // Diffuse материал
-    cbData.materialSpecular = DirectX::XMFLOAT3(1.0f, 1.0f, 1.0f); // Specular материал
-    cbData.shininess = 32.0f;                                      // Блеск
+    cbData.lightPos =DirectX::XMFLOAT3(-1.0f, -1.0f, -1.0f);// DirectX::XMFLOAT3(0.0f, 10.0f, 0.0f); // Свет сверху
+    cbData.lightColor = DirectX::XMFLOAT3(1.0f, 1.0f, 1.0f); // Белый свет
+    cbData.materialDiffuse = DirectX::XMFLOAT3(0.8f, 0.8f, 0.8f);
+    cbData.materialSpecular = DirectX::XMFLOAT3(0.2f, 0.2f, 0.2f); // Меньше бликов для пола
+    cbData.shininess = 16.0f; // Меньше глянца для пола
+    cbData.emissiveColor = DirectX::XMFLOAT3(0.0f, 0.0f, 0.0f); // Без подсветки для пола
+    cbData.cameraPos = cameraPos; // Позиция камеры
+    cbData.padding = 0.0f;
 
     context->UpdateSubresource(constantBuffer, 0, nullptr, &cbData, 0, 0);
     logger << "[Ground] Константный буфер обновлен" << std::endl;

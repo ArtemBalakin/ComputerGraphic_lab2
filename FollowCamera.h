@@ -9,7 +9,7 @@ public:
     DirectX::XMMATRIX GetViewProjMatrix();
     void SetAspectRatio(float aspect);
     void Update(DirectX::XMFLOAT3 target, float size);
-    DirectX::XMFLOAT3 GetPosition() const { return m_position; } // Добавляем геттер
+    DirectX::XMFLOAT3 GetPosition() const { return m_position; }
 
 private:
     DirectX::XMFLOAT3 m_position;

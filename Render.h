@@ -1,10 +1,9 @@
 #pragma once
 #include <d3d11.h>
-#include <windows.h>
 #include <vector>
+#include <memory>
 #include "CelestialBody.h"
 #include "Ground.h"
-#include "Logger.h"
 
 class Render {
 public:
@@ -13,8 +12,7 @@ public:
 
     bool Initialize();
     void RenderScene(const std::vector<std::unique_ptr<CelestialBody>>& bodies, const Ground* ground,
-                     DirectX::XMMATRIX viewProj, DirectX::XMFLOAT3 cameraPos, float fogStart,
-                     float fogEnd, DirectX::XMFLOAT4 fogColor);
+                     DirectX::XMMATRIX viewProj, DirectX::XMFLOAT3 cameraPos);
     ID3D11Device* GetDevice() { return device; }
 
 private:
